@@ -6,7 +6,7 @@ namespace Tests\PhpOffice\WMF\Reader;
 
 use PhpOffice\WMF\Reader\Magic;
 
-class MagicTest extends AbstractTestReader 
+class MagicTest extends AbstractTestReader
 {
     /**
      * @dataProvider dataProviderFiles
@@ -26,13 +26,14 @@ class MagicTest extends AbstractTestReader
         $reader->load($this->getResourceDir() . $file);
         $this->assertIsObject($reader->getResource());
     }
+
     /**
      * @dataProvider dataProviderFiles
      */
     public function testOutput(string $file): void
     {
-        $outputFile = $this->getResourceDir() . 'output_'.pathinfo($file, PATHINFO_FILENAME).'.png';
-        $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME).'.png';
+        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
+        $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME) . '.png';
 
         $reader = new Magic();
         $reader->load($this->getResourceDir() . $file);
@@ -49,6 +50,6 @@ class MagicTest extends AbstractTestReader
     public function testIsWMF(string $file): void
     {
         $reader = new Magic();
-        $this->assertTrue($reader->isWMF($this->getResourceDir() .$file));
+        $this->assertTrue($reader->isWMF($this->getResourceDir() . $file));
     }
 }

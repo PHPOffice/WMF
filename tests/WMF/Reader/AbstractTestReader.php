@@ -7,7 +7,7 @@ namespace Tests\PhpOffice\WMF\Reader;
 use Imagick;
 use PHPUnit\Framework\TestCase;
 
-class AbstractTestReader extends TestCase 
+class AbstractTestReader extends TestCase
 {
     public function getResourceDir(): string
     {
@@ -23,6 +23,9 @@ class AbstractTestReader extends TestCase
         $this->assertLessThanOrEqual($threshold, $result[1]);
     }
 
+    /**
+     * @return array<array<string>>
+     */
     public static function dataProviderFiles(): array
     {
         return [

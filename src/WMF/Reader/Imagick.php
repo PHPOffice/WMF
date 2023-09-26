@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PhpOffice\WMF\Reader;
 
 use Imagick as ImagickBase;
+use PhpOffice\WMF\Exception\WMFException;
 
 class Imagick implements ReaderInterface
 {
@@ -16,7 +17,8 @@ class Imagick implements ReaderInterface
     public function load(string $filename): bool
     {
         $this->im = new ImagickBase();
-        return $this->im->readImage($filename); 
+
+        return $this->im->readImage($filename);
     }
 
     public function isWMF(string $filename): bool
@@ -34,7 +36,7 @@ class Imagick implements ReaderInterface
 
     public function save(string $filename, string $format): bool
     {
-        switch(strtolower($format)) {
+        switch (strtolower($format)) {
             case 'gif':
             case 'jpg':
             case 'jpeg':
@@ -42,6 +44,7 @@ class Imagick implements ReaderInterface
             case 'webp':
             case 'wbmp':
                 $this->getResource()->setImageFormat(strtolower($format));
+
                 return $this->getResource()->writeImage($filename);
             default:
                 throw new WMFException(sprintf('Format %s not supported', $format));

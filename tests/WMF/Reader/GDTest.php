@@ -7,7 +7,7 @@ namespace Tests\PhpOffice\WMF\Reader;
 use GdImage;
 use PhpOffice\WMF\Reader\GD;
 
-class GDTest extends AbstractTestReader 
+class GDTest extends AbstractTestReader
 {
     /**
      * @dataProvider dataProviderFiles
@@ -25,15 +25,21 @@ class GDTest extends AbstractTestReader
     {
         $reader = new GD();
         $reader->load($this->getResourceDir() . $file);
-        $this->assertInstanceOf(GdImage::class, $reader->getResource());
+        if (\PHP_VERSION_ID < 80000) {
+            $this->assertIsResource($reader->getResource());
+        } else {
+            /* @phpstan-ignore-next-line */
+            $this->assertInstanceOf(GdImage::class, $reader->getResource());
+        }
     }
+
     /**
      * @dataProvider dataProviderFiles
      */
     public function testOutput(string $file): void
     {
-        $outputFile = $this->getResourceDir() . 'output_'.pathinfo($file, PATHINFO_FILENAME).'.png';
-        $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME).'.png';
+        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
+        $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME) . '.png';
 
         $reader = new GD();
         $reader->load($this->getResourceDir() . $file);
@@ -50,6 +56,6 @@ class GDTest extends AbstractTestReader
     public function testIsWMF(string $file): void
     {
         $reader = new GD();
-        $this->assertTrue($reader->isWMF($this->getResourceDir() .$file));
+        $this->assertTrue($reader->isWMF($this->getResourceDir() . $file));
     }
 }
