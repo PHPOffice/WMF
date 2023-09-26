@@ -1,0 +1,24 @@
+{
+    "name": "phpoffice/wmf",
+    "type": "library",
+    "require-dev": {
+        "phpunit/phpunit": "10"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "PhpOffice\\WMF\\": "src/WMF/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\PhpOffice\\WMF\\": "tests/WMF/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Progi1984",
+            "homepage": "https://lefevre.dev"
+        }
+    ]
+}
