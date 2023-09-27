@@ -7,7 +7,7 @@ namespace Tests\PhpOffice\WMF\Reader;
 use Imagick as ImagickBase;
 use PhpOffice\WMF\Reader\Imagick as ImagickReader;
 
-class ImagickTest extends AbstractTestReader 
+class ImagickTest extends AbstractTestReader
 {
     /**
      * @dataProvider dataProviderFiles
@@ -33,8 +33,8 @@ class ImagickTest extends AbstractTestReader
      */
     public function testOutput(string $file): void
     {
-        $outputFile = $this->getResourceDir() . 'output_'.pathinfo($file, PATHINFO_FILENAME).'.png';
-        $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME).'.png';
+        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
+        $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME) . '.png';
 
         $reader = new ImagickReader();
         $reader->load($this->getResourceDir() . $file);
