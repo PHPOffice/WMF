@@ -2,46 +2,41 @@
 
 declare(strict_types=1);
 
-namespace Tests\PhpOffice\WMF\Reader;
+namespace Tests\PhpOffice\WMF\Reader\WMF;
 
-use GdImage;
-use PhpOffice\WMF\Reader\GD;
+use PhpOffice\WMF\Reader\WMF\Magic;
+use Tests\PhpOffice\WMF\Reader\AbstractTestReader;
 
-class GDTest extends AbstractTestReader
+class MagicTest extends AbstractTestReader
 {
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testLoad(string $file): void
     {
-        $reader = new GD();
+        $reader = new Magic();
         $this->assertTrue($reader->load($this->getResourceDir() . $file));
     }
 
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testGetResource(string $file): void
     {
-        $reader = new GD();
+        $reader = new Magic();
         $reader->load($this->getResourceDir() . $file);
-        if (\PHP_VERSION_ID < 80000) {
-            $this->assertIsResource($reader->getResource());
-        } else {
-            /* @phpstan-ignore-next-line */
-            $this->assertInstanceOf(GdImage::class, $reader->getResource());
-        }
+        $this->assertIsObject($reader->getResource());
     }
 
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testOutput(string $file): void
     {
         $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
         $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME) . '.png';
 
-        $reader = new GD();
+        $reader = new Magic();
         $reader->load($this->getResourceDir() . $file);
         $reader->save($outputFile, 'png');
 
@@ -51,11 +46,11 @@ class GDTest extends AbstractTestReader
     }
 
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testIsWMF(string $file): void
     {
-        $reader = new GD();
+        $reader = new Magic();
         $this->assertTrue($reader->isWMF($this->getResourceDir() . $file));
     }
 }

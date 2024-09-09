@@ -26,7 +26,7 @@ class AbstractTestReader extends TestCase
     /**
      * @return array<array<string>>
      */
-    public static function dataProviderFiles(): array
+    public static function dataProviderFilesWMF(): array
     {
         return [
             [
@@ -40,6 +40,18 @@ class AbstractTestReader extends TestCase
             ],
             [
                 'vegetable.wmf',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<array<string>>
+     */
+    public static function dataProviderFilesWMFNotImplemented(): array
+    {
+        return [
+            [
+                'test_libuemf.wmf',
             ],
         ];
     }
