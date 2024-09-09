@@ -40,11 +40,34 @@ class ImagickTest extends AbstractTestReader
 
         $reader = new ImagickReader();
         $reader->load($this->getResourceDir() . $file);
-        $reader->save($outputFile, 'png');
+        $this->assertTrue($reader->save($outputFile, 'png'));
 
         $this->assertImageCompare($outputFile, $similarFile);
 
         @unlink($outputFile);
+    }
+
+    public function testSaveWithException(): void
+    {
+        $file = 'vegetable.wmf';
+        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
+
+        $this->expectException(WMFException::class);
+
+        $reader = new ImagickReader();
+        $reader->load($this->getResourceDir() . $file);
+        $reader->save($outputFile, 'notanextension');
+    }
+
+    public function testSaveWithoutException(): void
+    {
+        $file = 'vegetable.wmf';
+        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
+
+        $reader = new ImagickReader();
+        $reader->enableExceptions(false);
+        $reader->load($this->getResourceDir() . $file);
+        $this->assertFalse($reader->save($outputFile, 'notanextension'));
     }
 
     /**
@@ -59,11 +82,21 @@ class ImagickTest extends AbstractTestReader
     /**
      * @dataProvider dataProviderFilesWMFNotImplemented
      */
-    public function testNotImplemented(string $file): void
+    public function testNotImplementedWithExceptions(string $file): void
     {
         $this->expectException(WMFException::class);
 
         $reader = new ImagickReader();
         $reader->load($this->getResourceDir() . $file);
+    }
+
+    /**
+     * @dataProvider dataProviderFilesWMFNotImplemented
+     */
+    public function testNotImplementedWithoutExceptions(string $file): void
+    {
+        $reader = new ImagickReader();
+        $reader->enableExceptions(false);
+        $this->assertFalse($reader->load($this->getResourceDir() . $file));
     }
 }
