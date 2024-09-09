@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://phpoffice.github.io/WMF/index.html</loc>
+         <lastmod>2024-09-09</lastmod>
+    </url>
+    <url>
+         <loc>https://phpoffice.github.io/WMF/credits.html</loc>
+         <lastmod>2024-09-09</lastmod>
+    </url>
+    <url>
+         <loc>https://phpoffice.github.io/WMF/install.html</loc>
+         <lastmod>2024-09-09</lastmod>
+    </url>
+    <url>
+         <loc>https://phpoffice.github.io/WMF/changes/0.1.0.html</loc>
+         <lastmod>2024-09-09</lastmod>
+    </url>
+    <url>
+         <loc>https://phpoffice.github.io/WMF/usage/wmf.html</loc>
+         <lastmod>2024-09-09</lastmod>
+    </url>
+</urlset>
