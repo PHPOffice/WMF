@@ -8,7 +8,7 @@ use Imagick as ImagickBase;
 use ImagickException;
 use PhpOffice\WMF\Exception\WMFException;
 
-class Imagick implements ReaderInterface
+class Imagick extends ReaderAbstract
 {
     /**
      * @var ImagickBase
@@ -24,7 +24,11 @@ class Imagick implements ReaderInterface
         } catch (ImagickException $e) {
             $this->im->clear();
 
-            throw new WMFException('Cannot load WMG File from Imagick');
+            if ($this->hasExceptionsEnabled()) {
+                throw new WMFException('Cannot load WMG File from Imagick');
+            } else {
+                return false;
+            }
         }
     }
 
@@ -41,11 +45,6 @@ class Imagick implements ReaderInterface
         return $this->im;
     }
 
-    public function getMediaType(): string
-    {
-        return 'image/wmf';
-    }
-
     public function save(string $filename, string $format): bool
     {
         switch (strtolower($format)) {
@@ -59,7 +58,11 @@ class Imagick implements ReaderInterface
 
                 return $this->getResource()->writeImage($filename);
             default:
-                throw new WMFException(sprintf('Format %s not supported', $format));
+                if ($this->hasExceptionsEnabled()) {
+                    throw new WMFException(sprintf('Format %s not supported', $format));
+                } else {
+                    return false;
+                }
         }
     }
 }

@@ -7,7 +7,7 @@ namespace PhpOffice\WMF\Reader\WMF;
 use GdImage;
 use PhpOffice\WMF\Exception\WMFException;
 
-class GD implements ReaderInterface
+class GD extends ReaderAbstract
 {
     /**
      * @phpstan-ignore-next-line
@@ -255,7 +255,11 @@ class GD implements ReaderInterface
                     }
                     break;
                 default:
-                    throw new WMFException('Reader : Function not implemented : 0x' . str_pad(dechex($recordType), 4, '0', STR_PAD_LEFT));
+                    if ($this->hasExceptionsEnabled()) {
+                        throw new WMFException('Reader : Function not implemented : 0x' . str_pad(dechex($recordType), 4, '0', STR_PAD_LEFT));
+                    } else {
+                        return false;
+                    }
             }
         }
 
@@ -356,12 +360,11 @@ class GD implements ReaderInterface
             case 'wbmp':
                 return imagewbmp($this->getResource(), $filename);
             default:
-                throw new WMFException(sprintf('Format %s not supported', $format));
+                if ($this->hasExceptionsEnabled()) {
+                    throw new WMFException(sprintf('Format %s not supported', $format));
+                } else {
+                    return false;
+                }
         }
-    }
-
-    public function getMediaType(): string
-    {
-        return 'image/wmf';
     }
 }

@@ -45,11 +45,34 @@ class GDTest extends AbstractTestReader
 
         $reader = new GD();
         $reader->load($this->getResourceDir() . $file);
-        $reader->save($outputFile, 'png');
+        $this->assertTrue($reader->save($outputFile, 'png'));
 
         $this->assertImageCompare($outputFile, $similarFile, 0.02);
 
         @unlink($outputFile);
+    }
+
+    public function testSaveWithException(): void
+    {
+        $file = 'vegetable.wmf';
+        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
+
+        $this->expectException(WMFException::class);
+
+        $reader = new GD();
+        $reader->load($this->getResourceDir() . $file);
+        $reader->save($outputFile, 'notanextension');
+    }
+
+    public function testSaveWithoutException(): void
+    {
+        $file = 'vegetable.wmf';
+        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
+
+        $reader = new GD();
+        $reader->enableExceptions(false);
+        $reader->load($this->getResourceDir() . $file);
+        $this->assertFalse($reader->save($outputFile, 'notanextension'));
     }
 
     /**
@@ -64,11 +87,21 @@ class GDTest extends AbstractTestReader
     /**
      * @dataProvider dataProviderFilesWMFNotImplemented
      */
-    public function testNotImplemented(string $file): void
+    public function testNotImplementedWithExceptions(string $file): void
     {
         $this->expectException(WMFException::class);
 
         $reader = new GD();
         $reader->load($this->getResourceDir() . $file);
+    }
+
+    /**
+     * @dataProvider dataProviderFilesWMFNotImplemented
+     */
+    public function testNotImplementedWithoutExceptions(string $file): void
+    {
+        $reader = new GD();
+        $reader->enableExceptions(false);
+        $this->assertFalse($reader->load($this->getResourceDir() . $file));
     }
 }

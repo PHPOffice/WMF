@@ -8,7 +8,7 @@ use GDImage;
 use Imagick as ImagickBase;
 use PhpOffice\WMF\Reader\WMF\Imagick as ImagickReader;
 
-class Magic implements ReaderInterface
+class Magic extends ReaderAbstract
 {
     /**
      * @var ReaderInterface
