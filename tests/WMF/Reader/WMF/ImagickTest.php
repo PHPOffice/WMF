@@ -2,15 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Tests\PhpOffice\WMF\Reader;
+namespace Tests\PhpOffice\WMF\Reader\WMF;
 
 use Imagick as ImagickBase;
-use PhpOffice\WMF\Reader\Imagick as ImagickReader;
+use PhpOffice\WMF\Exception\WMFException;
+use PhpOffice\WMF\Reader\WMF\Imagick as ImagickReader;
+use Tests\PhpOffice\WMF\Reader\AbstractTestReader;
 
 class ImagickTest extends AbstractTestReader
 {
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testLoad(string $file): void
     {
@@ -19,7 +21,7 @@ class ImagickTest extends AbstractTestReader
     }
 
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testGetResource(string $file): void
     {
@@ -29,7 +31,7 @@ class ImagickTest extends AbstractTestReader
     }
 
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testOutput(string $file): void
     {
@@ -46,11 +48,22 @@ class ImagickTest extends AbstractTestReader
     }
 
     /**
-     * @dataProvider dataProviderFiles
+     * @dataProvider dataProviderFilesWMF
      */
     public function testIsWMF(string $file): void
     {
         $reader = new ImagickReader();
         $this->assertTrue($reader->isWMF($this->getResourceDir() . $file));
+    }
+
+    /**
+     * @dataProvider dataProviderFilesWMFNotImplemented
+     */
+    public function testNotImplemented(string $file): void
+    {
+        $this->expectException(WMFException::class);
+
+        $reader = new ImagickReader();
+        $reader->load($this->getResourceDir() . $file);
     }
 }

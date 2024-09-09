@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PhpOffice\WMF\Reader;
+namespace PhpOffice\WMF\Reader\WMF;
 
 use GdImage;
 use PhpOffice\WMF\Exception\WMFException;
@@ -72,6 +72,9 @@ class GD implements ReaderInterface
         return $key == (int) 0x9AC6CDD7;
     }
 
+    /**
+     * @see https://github.com/affinitybridge/mpdf/blob/master/src/Image/Wmf.php
+     */
     public function load(string $filename): bool
     {
         $this->content = file_get_contents($filename);
@@ -252,11 +255,29 @@ class GD implements ReaderInterface
                     }
                     break;
                 default:
-                    // throw new WMFException('Reader : Function not implemented : 0x' . str_pad(dechex($recordType), 4, '0', STR_PAD_LEFT));
+                    throw new WMFException('Reader : Function not implemented : 0x' . str_pad(dechex($recordType), 4, '0', STR_PAD_LEFT));
             }
         }
 
         return true;
+    }
+
+    protected function readHeader(): void
+    {
+        list(, $key) = unpack('L', substr($this->content, 0, 4));
+        list(, $handle) = unpack('S', substr($this->content, 4, 2));
+        list(, $left) = unpack('S', substr($this->content, 6, 2));
+        list(, $top) = unpack('S', substr($this->content, 8, 2));
+        list(, $right) = unpack('S', substr($this->content, 10, 2));
+        list(, $bottom) = unpack('S', substr($this->content, 12, 2));
+        list(, $this->unitPerInch) = unpack('S', substr($this->content, 14, 2));
+        list(, $reserved) = unpack('L', substr($this->content, 16, 4));
+        list(, $checksum) = unpack('S', substr($this->content, 18, 2));
+
+        $this->pos = 18;
+        if ($key == (int) 0x9AC6CDD7) {
+            $this->pos += 22;
+        }
     }
 
     /**
@@ -280,19 +301,21 @@ class GD implements ReaderInterface
     /**
      * @param array<string, string> $gdiObject
      */
-    protected function addGDIObject(array $gdiObject): void
+    protected function addGDIObject(array $gdiObject, ?int $idx = null): void
     {
-        // Find next available slot
-        $idx = 0;
+        if (!$idx) {
+            // Find next available slot
+            $idx = 0;
 
-        if (!empty($this->gdiObjects)) {
-            $empty = false;
-            $i = 0;
-            while (!$empty) {
-                $empty = !isset($this->gdiObjects[$i]);
-                ++$i;
+            if (!empty($this->gdiObjects)) {
+                $empty = false;
+                $i = 0;
+                while (!$empty) {
+                    $empty = !isset($this->gdiObjects[$i]);
+                    ++$i;
+                }
+                $idx = $i - 1;
             }
-            $idx = $i - 1;
         }
 
         $this->gdiObjects[$idx] = $gdiObject;
@@ -301,7 +324,7 @@ class GD implements ReaderInterface
     /**
      * @phpstan-ignore-next-line
      *
-     * @return GDImage|resource
+     * @return GdImage|resource
      */
     public function getResource()
     {
@@ -337,21 +360,8 @@ class GD implements ReaderInterface
         }
     }
 
-    protected function readHeader(): void
+    public function getMediaType(): string
     {
-        list(, $key) = unpack('L', substr($this->content, 0, 4));
-        list(, $handle) = unpack('S', substr($this->content, 4, 2));
-        list(, $left) = unpack('S', substr($this->content, 6, 2));
-        list(, $top) = unpack('S', substr($this->content, 8, 2));
-        list(, $right) = unpack('S', substr($this->content, 10, 2));
-        list(, $bottom) = unpack('S', substr($this->content, 12, 2));
-        list(, $this->unitPerInch) = unpack('S', substr($this->content, 14, 2));
-        list(, $reserved) = unpack('L', substr($this->content, 16, 4));
-        list(, $checksum) = unpack('S', substr($this->content, 18, 2));
-
-        $this->pos = 18;
-        if ($key == (int) 0x9AC6CDD7) {
-            $this->pos += 22;
-        }
+        return 'image/wmf';
     }
 }

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace PhpOffice\WMF\Reader;
+namespace PhpOffice\WMF\Reader\WMF;
 
 use GDImage;
 use Imagick as ImagickBase;
-use PhpOffice\WMF\Reader\Imagick as ImagickReader;
+use PhpOffice\WMF\Reader\WMF\Imagick as ImagickReader;
 
 class Magic implements ReaderInterface
 {
@@ -35,6 +35,11 @@ class Magic implements ReaderInterface
     public function save(string $filename, string $format): bool
     {
         return $this->reader->save($filename, $format);
+    }
+
+    public function getMediaType(): string
+    {
+        return $this->reader->getMediaType();
     }
 
     public function isWMF(string $filename): bool
