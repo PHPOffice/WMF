@@ -23,6 +23,15 @@ class ImagickTest extends AbstractTestReader
     /**
      * @dataProvider dataProviderFilesWMF
      */
+    public function testLoadFromString(string $file): void
+    {
+        $reader = new ImagickReader();
+        $this->assertTrue($reader->loadFromString(file_get_contents($this->getResourceDir() . $file)));
+    }
+
+    /**
+     * @dataProvider dataProviderFilesWMF
+     */
     public function testGetResource(string $file): void
     {
         $reader = new ImagickReader();

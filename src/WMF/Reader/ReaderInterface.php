@@ -9,6 +9,8 @@ interface ReaderInterface
 {
     public function load(string $filename): bool;
 
+    public function loadFromString(string $content): bool;
+
     public function save(string $filename, string $format): bool;
 
     public function getMediaType(): string;

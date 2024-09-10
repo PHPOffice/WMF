@@ -72,13 +72,25 @@ class GD extends ReaderAbstract
         return $key == (int) 0x9AC6CDD7;
     }
 
-    /**
-     * @see https://github.com/affinitybridge/mpdf/blob/master/src/Image/Wmf.php
-     */
     public function load(string $filename): bool
     {
         $this->content = file_get_contents($filename);
 
+        return $this->loadContent();
+    }
+
+    public function loadFromString(string $content): bool
+    {
+        $this->content = $content;
+
+        return $this->loadContent();
+    }
+
+    /**
+     * @see https://github.com/affinitybridge/mpdf/blob/master/src/Image/Wmf.php
+     */
+    private function loadContent(): bool
+    {
         $this->pos = 0;
         $this->gdiObjects = [];
         $k = 72 / 25.4;
