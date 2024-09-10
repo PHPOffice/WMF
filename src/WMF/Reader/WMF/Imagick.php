@@ -17,10 +17,20 @@ class Imagick extends ReaderAbstract
 
     public function load(string $filename): bool
     {
+        return $this->loadContent($filename, false);
+    }
+
+    public function loadFromString(string $content): bool
+    {
+        return $this->loadContent($content, true);
+    }
+
+    private function loadContent(string $content, bool $isBlob): bool
+    {
         try {
             $this->im = new ImagickBase();
 
-            return $this->im->readImage($filename);
+            return $isBlob ? $this->im->readImageBlob($content) : $this->im->readImage($content);
         } catch (ImagickException $e) {
             $this->im->clear();
 

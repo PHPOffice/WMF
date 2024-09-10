@@ -32,6 +32,11 @@ class Magic extends ReaderAbstract
         return $this->reader->load($filename);
     }
 
+    public function loadFromString(string $content): bool
+    {
+        return $this->reader->loadFromString($content);
+    }
+
     public function save(string $filename, string $format): bool
     {
         return $this->reader->save($filename, $format);
