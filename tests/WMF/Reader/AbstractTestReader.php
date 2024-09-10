@@ -55,4 +55,43 @@ class AbstractTestReader extends TestCase
             ],
         ];
     }
+
+    /**
+     * @return array<array<string>>
+     */
+    public static function dataProviderMediaType(): array
+    {
+        return [
+            [
+                'gif',
+                'image/gif',
+            ],
+            [
+                'jpg',
+                'image/jpeg',
+            ],
+            [
+                'jpeg',
+                'image/jpeg',
+            ],
+            [
+                'png',
+                'image/png',
+            ],
+            [
+                'webp',
+                'image/webp',
+            ],
+            [
+                'wbmp',
+                'image/vnd.wap.wbmp',
+            ],
+        ];
+    }
+
+    public function assertMimeType(string $filename, string $expectedMimeType): void
+    {
+        $gdInfo = getimagesize($filename);
+        $this->assertEquals($expectedMimeType, $gdInfo['mime']);
+    }
 }

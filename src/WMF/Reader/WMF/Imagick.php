@@ -42,12 +42,9 @@ class Imagick extends ReaderAbstract
         }
     }
 
-    public function isWMF(string $filename): bool
+    public function isWMF(): bool
     {
-        $im = new ImagickBase();
-        $im->readImage($filename);
-
-        return $im->getImageFormat() === 'WMF';
+        return $this->im->getImageFormat() === 'WMF';
     }
 
     public function getResource(): ImagickBase

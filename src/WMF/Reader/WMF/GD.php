@@ -65,9 +65,9 @@ class GD extends ReaderAbstract
         }
     }
 
-    public function isWMF(string $filename): bool
+    public function isWMF(): bool
     {
-        list(, $key) = unpack('L', substr(file_get_contents($filename), 0, 4));
+        list(, $key) = unpack('L', substr($this->content, 0, 4));
 
         return $key == (int) 0x9AC6CDD7;
     }
@@ -91,6 +91,10 @@ class GD extends ReaderAbstract
      */
     private function loadContent(): bool
     {
+        if (!$this->isWMF()) {
+            return false;
+        }
+
         $this->pos = 0;
         $this->gdiObjects = [];
         $k = 72 / 25.4;

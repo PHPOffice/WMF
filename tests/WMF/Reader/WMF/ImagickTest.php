@@ -56,6 +56,21 @@ class ImagickTest extends AbstractTestReader
         @unlink($outputFile);
     }
 
+    /**
+     * @dataProvider dataProviderMediaType
+     */
+    public function testSave(string $extension, string $mediatype): void
+    {
+        $outputFile = $this->getResourceDir() . 'output_save.' . $extension;
+
+        $reader = new ImagickReader();
+        $reader->load($this->getResourceDir() . 'burger.wmf');
+        $reader->save($outputFile, $extension);
+        $this->assertMimeType($outputFile, $mediatype);
+
+        @unlink($outputFile);
+    }
+
     public function testSaveWithException(): void
     {
         $file = 'vegetable.wmf';
@@ -85,7 +100,14 @@ class ImagickTest extends AbstractTestReader
     public function testIsWMF(string $file): void
     {
         $reader = new ImagickReader();
-        $this->assertTrue($reader->isWMF($this->getResourceDir() . $file));
+        $reader->load($this->getResourceDir() . $file);
+        $this->assertTrue($reader->isWMF());
+    }
+
+    public function testMediaType(): void
+    {
+        $reader = new ImagickReader();
+        $this->assertEquals('image/wmf', $reader->getMediaType());
     }
 
     /**
