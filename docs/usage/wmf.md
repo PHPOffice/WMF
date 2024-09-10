@@ -7,6 +7,9 @@ You can load `.wmf` files.
 You can one of two current backends : `gd` or `imagick`.
 If you don't know which one used, you can use the magic one.
 
+By default, the order of the backends is Imagick, followed by GD.
+Each backend is tested on different criteria: extension loaded, format support.
+
 ```php
 <?php
 
@@ -22,7 +25,41 @@ $reader = new Magic();
 $reader->load('sample.wmf');
 ```
 
-For next sample, I will use the magic one.
+For next samples, I will use the magic one.
+
+### `getBackends`
+
+This specific method for `Magic::class` returns backends sorted by priority.
+
+```php
+<?php
+
+use PhpOffice\WMF\Reader\WMF\Magic;
+
+$reader = new Magic();
+
+var_dump($reader->getBackends());
+```
+
+### `setBackends`
+
+This specific method for `Magic::class` defines backends sorted by priority.
+
+```php
+<?php
+
+use PhpOffice\WMF\Reader\WMF\GD;
+use PhpOffice\WMF\Reader\WMF\Imagick;
+use PhpOffice\WMF\Reader\WMF\Magic;
+
+$reader = new Magic();
+$reader->setBackends([
+  GD::class,
+  Imagick::class,
+]);
+
+var_dump($reader->getBackends());
+```
 
 ## Methods
 
@@ -39,15 +76,14 @@ The `Imagick` backend returns a `Imagick` object.
 use PhpOffice\WMF\Reader\WMF\Magic;
 
 $reader = new Magic();
+$reader->load('sample.wmf');
 
-$wmf = $reader->load('sample.wmf');
-
-var_dump($wmf->getResource());
+var_dump($reader->getResource());
 ```
 
 ### `getMediaType`
 
-The method returns the media type for a WMF file
+The method returns the media type for a WMF file.
 
 ```php
 <?php
@@ -63,7 +99,7 @@ echo 'The media type for a WMF file is ' . $$mediaType;
 
 ### `isWMF`
 
-The method allows to know if the file is supported by the library.
+The method returns if the file is supported by the library.
 
 ```php
 <?php
@@ -71,15 +107,17 @@ The method allows to know if the file is supported by the library.
 use PhpOffice\WMF\Reader\WMF\Magic;
 
 $reader = new Magic();
+$reader->load('sample.wmf');
 
-$isWMF = $reader->isWMF('sample.wmf');
+$isWMF = $reader->isWMF();
 
 echo 'The file sample.wmf ' . ($isWMF ? 'is a WMF file' : 'is not a WMF file');
 ```
 
 ### `load`
 
-The method load a WMF file in the object
+The method loads a WMF file in the object.
+The method returns `true` if the file has been correctly loaded, or `false` if it has not. 
 
 ```php
 <?php
@@ -87,8 +125,21 @@ The method load a WMF file in the object
 use PhpOffice\WMF\Reader\WMF\Magic;
 
 $reader = new Magic();
+$reader->load('sample.wmf');
+```
 
-$wmf = $reader->load('sample.wmf');
+### `loadFromString`
+
+The method loads a WMF file in the object from a string.
+The method returns `true` if the file has been correctly loaded, or `false` if it has not. 
+
+```php
+<?php
+
+use PhpOffice\WMF\Reader\WMF\Magic;
+
+$reader = new Magic();
+$reader->loadFromString(file_get_contents('sample.wmf'));
 ```
 
 ### `save`
@@ -101,7 +152,6 @@ The method transforms the loaded WMF file in an another image.
 use PhpOffice\WMF\Reader\WMF\Magic;
 
 $reader = new Magic();
-
-$wmf = $reader->load('sample.wmf');
-$wmf->save('sample.png', 'png');
+$reader->load('sample.wmf');
+$reader->save('sample.png', 'png');
 ```

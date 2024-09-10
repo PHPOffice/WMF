@@ -4,5 +4,6 @@
 composer.lock
 phpDocumentor.phar
 
+build/
 public/
 vendor/

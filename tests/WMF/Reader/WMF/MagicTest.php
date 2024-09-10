@@ -4,62 +4,32 @@ declare(strict_types=1);
 
 namespace Tests\PhpOffice\WMF\Reader\WMF;
 
+use PhpOffice\WMF\Reader\WMF\GD;
+use PhpOffice\WMF\Reader\WMF\Imagick;
 use PhpOffice\WMF\Reader\WMF\Magic;
 use Tests\PhpOffice\WMF\Reader\AbstractTestReader;
 
 class MagicTest extends AbstractTestReader
 {
-    /**
-     * @dataProvider dataProviderFilesWMF
-     */
-    public function testLoad(string $file): void
+    public function testGetBackends(): void
     {
         $reader = new Magic();
-        $this->assertTrue($reader->load($this->getResourceDir() . $file));
+        $this->assertEquals([
+            Imagick::class,
+            GD::class,
+        ], $reader->getBackends());
     }
 
-    /**
-     * @dataProvider dataProviderFilesWMF
-     */
-    public function testLoadFromString(string $file): void
+    public function testSetBackends(): void
     {
         $reader = new Magic();
-        $this->assertTrue($reader->loadFromString(file_get_contents($this->getResourceDir() . $file)));
-    }
-
-    /**
-     * @dataProvider dataProviderFilesWMF
-     */
-    public function testGetResource(string $file): void
-    {
-        $reader = new Magic();
-        $reader->load($this->getResourceDir() . $file);
-        $this->assertIsObject($reader->getResource());
-    }
-
-    /**
-     * @dataProvider dataProviderFilesWMF
-     */
-    public function testOutput(string $file): void
-    {
-        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
-        $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME) . '.png';
-
-        $reader = new Magic();
-        $reader->load($this->getResourceDir() . $file);
-        $reader->save($outputFile, 'png');
-
-        $this->assertImageCompare($outputFile, $similarFile, 0.02);
-
-        @unlink($outputFile);
-    }
-
-    /**
-     * @dataProvider dataProviderFilesWMF
-     */
-    public function testIsWMF(string $file): void
-    {
-        $reader = new Magic();
-        $this->assertTrue($reader->isWMF($this->getResourceDir() . $file));
+        $this->assertInstanceOf(Magic::class, $reader->setBackends([
+            GD::class,
+            Imagick::class,
+        ]));
+        $this->assertEquals([
+            GD::class,
+            Imagick::class,
+        ], $reader->getBackends());
     }
 }

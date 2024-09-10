@@ -5,18 +5,31 @@ declare(strict_types=1);
 namespace Tests\PhpOffice\WMF\Reader\WMF;
 
 use GdImage;
-use PhpOffice\WMF\Exception\WMFException;
 use PhpOffice\WMF\Reader\WMF\GD;
+use PhpOffice\WMF\Reader\WMF\Imagick;
+use PhpOffice\WMF\Reader\WMF\Magic;
+use PhpOffice\WMF\Reader\WMF\ReaderInterface;
 use Tests\PhpOffice\WMF\Reader\AbstractTestReader;
 
-class GDTest extends AbstractTestReader
+class MagicGDTest extends AbstractTestReader
 {
+    private function getReader(): ReaderInterface
+    {
+        $reader = new Magic();
+        $reader->setBackends([
+            GD::class,
+            Imagick::class,
+        ]);
+
+        return $reader;
+    }
+
     /**
      * @dataProvider dataProviderFilesWMF
      */
     public function testLoad(string $file): void
     {
-        $reader = new GD();
+        $reader = $this->getReader();
         $this->assertTrue($reader->load($this->getResourceDir() . $file));
     }
 
@@ -25,7 +38,7 @@ class GDTest extends AbstractTestReader
      */
     public function testLoadFromString(string $file): void
     {
-        $reader = new GD();
+        $reader = $this->getReader();
         $this->assertTrue($reader->loadFromString(file_get_contents($this->getResourceDir() . $file)));
     }
 
@@ -34,7 +47,7 @@ class GDTest extends AbstractTestReader
      */
     public function testGetResource(string $file): void
     {
-        $reader = new GD();
+        $reader = $this->getReader();
         $reader->load($this->getResourceDir() . $file);
         if (\PHP_VERSION_ID < 80000) {
             $this->assertIsResource($reader->getResource());
@@ -52,9 +65,9 @@ class GDTest extends AbstractTestReader
         $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
         $similarFile = $this->getResourceDir() . pathinfo($file, PATHINFO_FILENAME) . '.png';
 
-        $reader = new GD();
+        $reader = $this->getReader();
         $reader->load($this->getResourceDir() . $file);
-        $this->assertTrue($reader->save($outputFile, 'png'));
+        $reader->save($outputFile, 'png');
 
         $this->assertImageCompare($outputFile, $similarFile, 0.02);
 
@@ -68,7 +81,7 @@ class GDTest extends AbstractTestReader
     {
         $outputFile = $this->getResourceDir() . 'output_save.' . $extension;
 
-        $reader = new GD();
+        $reader = $this->getReader();
         $reader->load($this->getResourceDir() . 'burger.wmf');
         $reader->save($outputFile, $extension);
         $this->assertMimeType($outputFile, $mediatype);
@@ -76,63 +89,19 @@ class GDTest extends AbstractTestReader
         @unlink($outputFile);
     }
 
-    public function testSaveWithException(): void
-    {
-        $file = 'vegetable.wmf';
-        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
-
-        $this->expectException(WMFException::class);
-
-        $reader = new GD();
-        $reader->load($this->getResourceDir() . $file);
-        $reader->save($outputFile, 'notanextension');
-    }
-
-    public function testSaveWithoutException(): void
-    {
-        $file = 'vegetable.wmf';
-        $outputFile = $this->getResourceDir() . 'output_' . pathinfo($file, PATHINFO_FILENAME) . '.png';
-
-        $reader = new GD();
-        $reader->enableExceptions(false);
-        $reader->load($this->getResourceDir() . $file);
-        $this->assertFalse($reader->save($outputFile, 'notanextension'));
-    }
-
     /**
      * @dataProvider dataProviderFilesWMF
      */
     public function testIsWMF(string $file): void
     {
-        $reader = new GD();
+        $reader = $this->getReader();
         $reader->load($this->getResourceDir() . $file);
         $this->assertTrue($reader->isWMF());
     }
 
     public function testMediaType(): void
     {
-        $reader = new GD();
+        $reader = $this->getReader();
         $this->assertEquals('image/wmf', $reader->getMediaType());
-    }
-
-    /**
-     * @dataProvider dataProviderFilesWMFNotImplemented
-     */
-    public function testNotImplementedWithExceptions(string $file): void
-    {
-        $this->expectException(WMFException::class);
-
-        $reader = new GD();
-        $reader->load($this->getResourceDir() . $file);
-    }
-
-    /**
-     * @dataProvider dataProviderFilesWMFNotImplemented
-     */
-    public function testNotImplementedWithoutExceptions(string $file): void
-    {
-        $reader = new GD();
-        $reader->enableExceptions(false);
-        $this->assertFalse($reader->load($this->getResourceDir() . $file));
     }
 }
