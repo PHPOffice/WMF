@@ -10,6 +10,10 @@ abstract class ReaderAbstract implements ReaderInterface
      * @var bool
      */
     protected $hasExceptionsEnabled = true;
+    /**
+     * @var string
+     */
+    protected $content;
 
     /**
      * Enable/Disable throwing exceptions

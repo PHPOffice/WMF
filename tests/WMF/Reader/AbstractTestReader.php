@@ -59,7 +59,7 @@ class AbstractTestReader extends TestCase
     /**
      * @return array<array<string>>
      */
-    public static function dataProviderMediaType(): array
+    public static function dataProviderMediaTypeWMF(): array
     {
         return [
             [
@@ -86,12 +86,24 @@ class AbstractTestReader extends TestCase
                 'wbmp',
                 'image/vnd.wap.wbmp',
             ],
+            [
+                'wmf',
+                'image/x-wmf',
+            ],
         ];
     }
 
     public function assertMimeType(string $filename, string $expectedMimeType): void
     {
+        // Use GD
         $gdInfo = getimagesize($filename);
-        $this->assertEquals($expectedMimeType, $gdInfo['mime']);
+        if (is_array($gdInfo)) {
+            $this->assertEquals($expectedMimeType, $gdInfo['mime']);
+
+            return;
+        }
+
+        // Use Imagick
+        $this->assertEquals($expectedMimeType, (new Imagick($filename))->getImageMimeType());
     }
 }
