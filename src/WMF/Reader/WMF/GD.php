@@ -16,10 +16,6 @@ class GD extends ReaderAbstract
      */
     protected $gd;
     /**
-     * @var string
-     */
-    protected $content;
-    /**
      * @var int
      */
     protected $pos;
@@ -375,6 +371,8 @@ class GD extends ReaderAbstract
                 return imagewebp($this->getResource(), $filename);
             case 'wbmp':
                 return imagewbmp($this->getResource(), $filename);
+            case 'wmf':
+                return (bool) (file_put_contents($filename, $this->content) > 0);
             default:
                 if ($this->hasExceptionsEnabled()) {
                     throw new WMFException(sprintf('Format %s not supported', $format));

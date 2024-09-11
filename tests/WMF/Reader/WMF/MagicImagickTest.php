@@ -69,7 +69,7 @@ class MagicImagickTest extends AbstractTestReader
     }
 
     /**
-     * @dataProvider dataProviderMediaType
+     * @dataProvider dataProviderMediaTypeWMF
      */
     public function testSave(string $extension, string $mediatype): void
     {

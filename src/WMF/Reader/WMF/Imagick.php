@@ -17,20 +17,24 @@ class Imagick extends ReaderAbstract
 
     public function load(string $filename): bool
     {
-        return $this->loadContent($filename, false);
+        $this->content = file_get_contents($filename);
+
+        return $this->loadContent();
     }
 
     public function loadFromString(string $content): bool
     {
-        return $this->loadContent($content, true);
+        $this->content = $content;
+
+        return $this->loadContent();
     }
 
-    private function loadContent(string $content, bool $isBlob): bool
+    protected function loadContent(): bool
     {
         try {
             $this->im = new ImagickBase();
 
-            return $isBlob ? $this->im->readImageBlob($content) : $this->im->readImage($content);
+            return $this->im->readImageBlob($this->content);
         } catch (ImagickException $e) {
             $this->im->clear();
 
@@ -64,6 +68,8 @@ class Imagick extends ReaderAbstract
                 $this->getResource()->setImageFormat(strtolower($format));
 
                 return $this->getResource()->writeImage($filename);
+            case 'wmf':
+                return (bool) (file_put_contents($filename, $this->content) > 0);
             default:
                 if ($this->hasExceptionsEnabled()) {
                     throw new WMFException(sprintf('Format %s not supported', $format));
