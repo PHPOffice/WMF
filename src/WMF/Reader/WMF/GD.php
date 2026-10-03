@@ -269,9 +269,9 @@ class GD extends ReaderAbstract
                 default:
                     if ($this->hasExceptionsEnabled()) {
                         throw new WMFException('Reader : Function not implemented : 0x' . str_pad(dechex($recordType), 4, '0', STR_PAD_LEFT));
-                    } else {
-                        return false;
                     }
+
+                    return false;
             }
         }
 
@@ -376,9 +376,9 @@ class GD extends ReaderAbstract
             default:
                 if ($this->hasExceptionsEnabled()) {
                     throw new WMFException(sprintf('Format %s not supported', $format));
-                } else {
-                    return false;
                 }
+
+                return false;
         }
     }
 }

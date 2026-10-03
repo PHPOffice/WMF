@@ -40,9 +40,9 @@ class Imagick extends ReaderAbstract
 
             if ($this->hasExceptionsEnabled()) {
                 throw new WMFException('Cannot load WMG File from Imagick');
-            } else {
-                return false;
             }
+
+            return false;
         }
     }
 
@@ -73,9 +73,9 @@ class Imagick extends ReaderAbstract
             default:
                 if ($this->hasExceptionsEnabled()) {
                     throw new WMFException(sprintf('Format %s not supported', $format));
-                } else {
-                    return false;
                 }
+
+                return false;
         }
     }
 }
