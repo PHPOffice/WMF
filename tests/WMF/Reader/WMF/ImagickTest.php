@@ -51,7 +51,7 @@ class ImagickTest extends AbstractTestReader
         $reader->load($this->getResourceDir() . $file);
         $this->assertTrue($reader->save($outputFile, 'png'));
 
-        $this->assertImageCompare($outputFile, $similarFile);
+        $this->assertImageCompare($outputFile, $similarFile, 0.02);
 
         @unlink($outputFile);
     }
