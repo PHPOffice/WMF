@@ -9,7 +9,7 @@ WMF is an open source project licensed under the terms of [MIT](https://github.c
 - Read files
 
     * WMF files
-    * (EMF files, not for the moment)
+    * EMF files
     * (EMF+ files, not for the moment)
 
 ## Contributing

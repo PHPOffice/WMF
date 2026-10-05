@@ -4,39 +4,12 @@ declare(strict_types=1);
 
 namespace PhpOffice\WMF\Reader\WMF;
 
-abstract class ReaderAbstract implements ReaderInterface
+use PhpOffice\WMF\Reader\ReaderAbstract as ReaderAbstractBase;
+
+abstract class ReaderAbstract extends ReaderAbstractBase implements ReaderInterface
 {
-    /**
-     * @var bool
-     */
-    protected $hasExceptionsEnabled = true;
-    /**
-     * @var string
-     */
-    protected $content;
-
-    /**
-     * Enable/Disable throwing exceptions
-     *
-     * By default, it's enabled
-     */
-    public function enableExceptions(bool $enable): self
+    protected function getFormat(): string
     {
-        $this->hasExceptionsEnabled = $enable;
-
-        return $this;
-    }
-
-    /**
-     * Returns if exceptions are thrown
-     */
-    public function hasExceptionsEnabled(): bool
-    {
-        return $this->hasExceptionsEnabled;
-    }
-
-    public function getMediaType(): string
-    {
-        return 'image/wmf';
+        return 'wmf';
     }
 }

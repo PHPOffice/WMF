@@ -16,6 +16,11 @@ interface ReaderInterface
     public function getMediaType(): string;
 
     /**
+     * Returns if the reader can be used (extensions loaded, format supported)
+     */
+    public function isSupported(): bool;
+
+    /**
      * @phpstan-ignore-next-line
      *
      * @return GDImage|Imagick

@@ -25,7 +25,7 @@ Read more about WMF:
 - Read files
 
     * WMF files
-    * (EMF files, not for the moment)
+    * EMF files
     * (EMF+ files, not for the moment)
 
 ## Requirements
@@ -47,6 +47,11 @@ or if you want the latest unreleased version
 ```sh
 composer require phpoffice/wmf:dev-master
 ```
+
+## Credits
+
+The EMF test files of the directory `tests/resources/libemf2svg` come from the [libemf2svg](https://github.com/kakwa/libemf2svg/tree/master/tests/resources) project, licensed under the [GNU General Public License v2.0](https://github.com/kakwa/libemf2svg/blob/master/LICENSE).
+They are only used by the test suite and are not distributed in the Composer package.
 
 ## Contributing
 
