@@ -6,335 +6,723 @@ namespace PhpOffice\WMF\Reader\WMF;
 
 use GdImage;
 use PhpOffice\WMF\Exception\WMFException;
+use PhpOffice\WMF\Reader\Detector;
+use PhpOffice\WMF\Reader\GDTrait;
+use PhpOffice\WMF\Renderer\Bitmap;
+use PhpOffice\WMF\Renderer\Encoding;
+use PhpOffice\WMF\Renderer\FontResolver;
+use PhpOffice\WMF\Renderer\GD as Renderer;
+use PhpOffice\WMF\Renderer\Rasterizer;
 
+/**
+ * Reader of placeable WMF files based on GD
+ *
+ * The records are drawn by the renderer PhpOffice\WMF\Renderer\GD.
+ *
+ * @see https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-wmf/
+ */
 class GD extends ReaderAbstract
 {
-    /**
-     * @phpstan-ignore-next-line
-     *
-     * @var GdImage|resource|false
-     */
-    protected $gd;
-    /**
-     * @var int
-     */
-    protected $pos;
-    /**
-     * @var int
-     */
-    protected $windowOriginX;
-    /**
-     * @var int
-     */
-    protected $windowOriginY;
-    /**
-     * @var int
-     */
-    protected $windowWidth;
-    /**
-     * @var int
-     */
-    protected $windowHeight;
-    /**
-     * @var int
-     */
-    protected $unitPerInch;
-    /**
-     * @var array<array<string, string>>
-     */
-    protected $gdiObjects = [];
+    use GDTrait;
 
     public const META_EOF = 0x0000;
+    public const META_SAVEDC = 0x001E;
+    public const META_REALIZEPALETTE = 0x0035;
+    public const META_SETPALENTRIES = 0x0037;
+    public const META_CREATEPALETTE = 0x00F7;
+    public const META_SETBKMODE = 0x0102;
+    public const META_SETMAPMODE = 0x0103;
+    public const META_SETROP2 = 0x0104;
+    public const META_SETRELABS = 0x0105;
     public const META_SETPOLYFILLMODE = 0x0106;
+    public const META_SETSTRETCHBLTMODE = 0x0107;
+    public const META_SETTEXTCHAREXTRA = 0x0108;
+    public const META_RESTOREDC = 0x0127;
+    public const META_INVERTREGION = 0x012A;
+    public const META_PAINTREGION = 0x012B;
+    public const META_SELECTCLIPREGION = 0x012C;
     public const META_SELECTOBJECT = 0x012D;
+    public const META_SETTEXTALIGN = 0x012E;
+    public const META_RESIZEPALETTE = 0x0139;
+    public const META_DIBCREATEPATTERNBRUSH = 0x0142;
+    public const META_SETLAYOUT = 0x0149;
     public const META_DELETEOBJECT = 0x01F0;
+    public const META_CREATEPATTERNBRUSH = 0x01F9;
+    public const META_SETBKCOLOR = 0x0201;
+    public const META_SETTEXTCOLOR = 0x0209;
+    public const META_SETTEXTJUSTIFICATION = 0x020A;
     public const META_SETWINDOWORG = 0x020B;
     public const META_SETWINDOWEXT = 0x020C;
+    public const META_SETVIEWPORTORG = 0x020D;
+    public const META_SETVIEWPORTEXT = 0x020E;
+    public const META_OFFSETWINDOWORG = 0x020F;
+    public const META_OFFSETVIEWPORTORG = 0x0211;
+    public const META_LINETO = 0x0213;
+    public const META_MOVETO = 0x0214;
+    public const META_OFFSETCLIPRGN = 0x0220;
+    public const META_FILLREGION = 0x0228;
+    public const META_SETMAPPERFLAGS = 0x0231;
+    public const META_SELECTPALETTE = 0x0234;
     public const META_CREATEPENINDIRECT = 0x02FA;
+    public const META_CREATEFONTINDIRECT = 0x02FB;
     public const META_CREATEBRUSHINDIRECT = 0x02FC;
     public const META_POLYGON = 0x0324;
+    public const META_POLYLINE = 0x0325;
+    public const META_SCALEWINDOWEXT = 0x0410;
+    public const META_SCALEVIEWPORTEXT = 0x0412;
+    public const META_EXCLUDECLIPRECT = 0x0415;
+    public const META_INTERSECTCLIPRECT = 0x0416;
+    public const META_ELLIPSE = 0x0418;
+    public const META_FLOODFILL = 0x0419;
+    public const META_RECTANGLE = 0x041B;
+    public const META_SETPIXEL = 0x041F;
+    public const META_FRAMEREGION = 0x0429;
+    public const META_ANIMATEPALETTE = 0x0436;
+    public const META_TEXTOUT = 0x0521;
+    public const META_POLYPOLYGON = 0x0538;
+    public const META_EXTFLOODFILL = 0x0548;
+    public const META_ROUNDRECT = 0x061C;
+    public const META_PATBLT = 0x061D;
+    public const META_ESCAPE = 0x0626;
+    public const META_CREATEREGION = 0x06FF;
+    public const META_ARC = 0x0817;
+    public const META_PIE = 0x081A;
+    public const META_CHORD = 0x0830;
+    public const META_BITBLT = 0x0922;
+    public const META_DIBBITBLT = 0x0940;
+    public const META_EXTTEXTOUT = 0x0A32;
+    public const META_STRETCHBLT = 0x0B23;
+    public const META_DIBSTRETCHBLT = 0x0B41;
+    public const META_SETDIBTODEV = 0x0D33;
+    public const META_STRETCHDIB = 0x0F43;
 
-    public function __destruct()
+    /**
+     * Records which have no effect on the rendering
+     *
+     * The viewport & the map mode are ignored : the window is mapped to the image
+     */
+    protected const IGNORED_RECORDS = [
+        self::META_REALIZEPALETTE,
+        self::META_SETPALENTRIES,
+        self::META_SETMAPMODE,
+        self::META_SETROP2,
+        self::META_SETRELABS,
+        self::META_SETSTRETCHBLTMODE,
+        self::META_SETTEXTCHAREXTRA,
+        self::META_INVERTREGION,
+        self::META_RESIZEPALETTE,
+        self::META_SETLAYOUT,
+        self::META_SETTEXTJUSTIFICATION,
+        self::META_SETVIEWPORTORG,
+        self::META_SETVIEWPORTEXT,
+        self::META_OFFSETVIEWPORTORG,
+        self::META_SETMAPPERFLAGS,
+        self::META_SELECTPALETTE,
+        self::META_SCALEVIEWPORTEXT,
+        self::META_ANIMATEPALETTE,
+        self::META_ESCAPE,
+    ];
+
+    /**
+     * Resolution of the output image
+     */
+    public const DPI = 72;
+
+    /**
+     * @var Renderer
+     */
+    protected $renderer;
+    /**
+     * @var FontResolver
+     */
+    protected $fontResolver;
+    /**
+     * Objects (pens, brushes, fonts, regions, palettes) indexed by their position in the table of objects
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    protected $objects = [];
+
+    public function __construct()
     {
-        if ($this->gd) {
-            imagedestroy($this->gd);
-        }
-    }
-
-    public function isWMF(): bool
-    {
-        list(, $key) = unpack('L', substr($this->content, 0, 4));
-
-        return $key == (int) 0x9AC6CDD7;
-    }
-
-    public function load(string $filename): bool
-    {
-        $this->content = file_get_contents($filename);
-
-        return $this->loadContent();
-    }
-
-    public function loadFromString(string $content): bool
-    {
-        $this->content = $content;
-
-        return $this->loadContent();
+        $this->fontResolver = new FontResolver();
     }
 
     /**
-     * @see https://github.com/affinitybridge/mpdf/blob/master/src/Image/Wmf.php
+     * Only placeable WMF files are supported (the header defines the size of the image)
      */
-    private function loadContent(): bool
+    public function isWMF(): bool
+    {
+        return Detector::isPlaceableWMF((string) $this->content);
+    }
+
+    /**
+     * Defines the directories where TrueType/OpenType fonts are searched (recursively)
+     *
+     * By default, the system directories are used
+     *
+     * @param array<string> $directories
+     */
+    public function setFontDirectories(array $directories): self
+    {
+        $this->fontResolver->setDirectories($directories);
+
+        return $this;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getFontDirectories(): array
+    {
+        return $this->fontResolver->getDirectories();
+    }
+
+    protected function loadContent(): bool
     {
         if (!$this->isWMF()) {
             return false;
         }
 
-        $this->pos = 0;
-        $this->gdiObjects = [];
-        $k = 72 / 25.4;
-
-        $this->readHeader();
-
-        $contentLen = strlen($this->content);
-        $recordEnd = false;
-
-        $dataFillColor = $dataDrawColor = null;
-        $nullPen = $nullBrush = false;
-        $dashArray = [];
-        $modePolyFill = 0;
-
-        while ($this->pos < $contentLen && !$recordEnd) {
-            list(, $size) = unpack('L', substr($this->content, $this->pos, 4));
-            $this->pos += 4;
-
-            list(, $recordType) = unpack('S', substr($this->content, $this->pos, 2));
-            $this->pos += 2;
-
-            $params = [];
-            if ($size > 3) {
-                $params = substr($this->content, $this->pos, 2 * ($size - 3));
-                $this->pos += 2 * ($size - 3);
+        // Corrupted files must not raise PHP errors
+        set_error_handler(function (int $errno, string $errstr): bool {
+            if (!(error_reporting() & $errno)) {
+                return false;
+            }
+            throw new WMFException('Reader : Invalid file : ' . $errstr);
+        });
+        try {
+            $this->readRecords();
+        } catch (WMFException $e) {
+            if ($this->hasExceptionsEnabled()) {
+                throw $e;
             }
 
-            switch ($recordType) {
-                case self::META_EOF:
-                    $recordEnd = true;
-                    break;
-                case self::META_SETPOLYFILLMODE:
-                    list(, $modePolyFill) = unpack('s', $params);
-                    break;
-                case self::META_SELECTOBJECT:
-                    list(, $idx) = unpack('S', $params);
-                    $object = $this->gdiObjects[$idx];
-                    switch ($object['type']) {
-                        case 'B':
-                            $nullBrush = false;
-                            if ($object['style'] == 1) {
-                                $nullBrush = true;
-                            } else {
-                                $dataFillColor = imagecolorallocate($this->gd, (int) $object['r'], (int) $object['g'], (int) $object['b']);
-                            }
-                            break;
-                        case 'P':
-                            $nullPen = false;
-                            $dashArray = [];
-                            // dash parameters are custom
-                            switch ($object['style']) {
-                                case 0: // PS_SOLID
-                                    break;
-                                case 1: // PS_DASH
-                                    $dashArray = [3, 1];
-                                    break;
-                                case 2: // PS_DOT
-                                    $dashArray = [0.5, 0.5];
-                                    break;
-                                case 3: // PS_DASHDOT
-                                    $dashArray = [2, 1, 0.5, 1];
-                                    break;
-                                case 4: // PS_DASHDOTDOT
-                                    $dashArray = [2, 1, 0.5, 1, 0.5, 1];
-                                    break;
-                                case 5: // PS_NULL
-                                    $nullPen = true;
-                                    break;
-                            }
-                            if (!$nullPen) {
-                                $dataDrawColor = imagecolorallocate($this->gd, (int) $object['r'], (int) $object['g'], (int) $object['b']);
-                                // @todo
-                                // $wmfdata .= sprintf("%.3F w\n", $object['width'] * $k);
-                            }
-                            if (!empty($dashArray)) {
-                                $s = '[';
-                                for ($i = 0; $i < count($dashArray); ++$i) {
-                                    $s .= $dashArray[$i] * $k;
-                                    if ($i != count($dashArray) - 1) {
-                                        $s .= ' ';
-                                    }
-                                }
-                                $s .= '] 0 d';
-                            }
-                            break;
-                    }
-                    break;
-                case self::META_DELETEOBJECT:
-                    list(, $idx) = unpack('S', $params);
-                    unset($this->gdiObjects[$idx]);
-                    break;
-                case self::META_SETWINDOWORG:
-                    // Do not allow window origin to be changed after drawing has begun
-                    if (!$this->windowOriginX) {
-                        $windowOrigin = array_reverse(unpack('s2', $params));
-                        $this->windowOriginX = (int) $windowOrigin[0];
-                        $this->windowOriginY = (int) $windowOrigin[1];
-                    }
-                    break;
-                case self::META_SETWINDOWEXT:
-                    // Do not allow window extent to be changed after drawing has begun
-                    if (!$this->windowWidth) {
-                        $windowExtent = array_reverse(unpack('s2', $params));
-                        $this->windowWidth = (int) $windowExtent[0];
-                        $this->windowHeight = (int) ($windowExtent[1] > 0 ? $windowExtent[1] : $windowExtent[1] * -1);
-
-                        $this->gd = imagecreatetruecolor($this->windowWidth, $this->windowHeight);
-                        imagefilledrectangle($this->gd, 0, 0, $this->windowWidth, $this->windowHeight, imagecolorallocate($this->gd, 255, 255, 255));
-                    }
-                    break;
-                case self::META_CREATEPENINDIRECT:
-                    $pen = unpack('Sstyle/swidth/sdummy/Cr/Cg/Cb/Ca', $params);
-                    // convert width from twips to user unit
-                    $pen['width'] /= (20 * $k);
-                    $pen['type'] = 'P';
-                    $this->addGDIObject($pen);
-                    break;
-                case self::META_CREATEBRUSHINDIRECT:
-                    $brush = unpack('sstyle/Cr/Cg/Cb/Ca/Shatch', $params);
-                    $brush['type'] = 'B';
-                    $this->addGDIObject($brush);
-                    break;
-                case self::META_POLYGON:
-                    $coordinates = unpack('s' . ($size - 3), $params);
-                    $numpoints = $coordinates[1];
-
-                    $points = [];
-                    for ($i = $numpoints; $i > 0; --$i) {
-                        list($px, $py) = $this->resetCoordinates((int) $coordinates[2 * $i], (int) $coordinates[2 * $i + 1]);
-
-                        if ($i < $numpoints) {
-                            $points[] = $px;
-                            $points[] = $py;
-                        } else {
-                            $points[] = $px;
-                            $points[] = $py;
-                        }
-                    }
-                    if ($recordType == 0x0325) {
-                        \imagepolygon($this->gd, $points, $numpoints, $dataDrawColor);
-                    }
-                    if ($recordType == self::META_POLYGON) {
-                        if ($nullPen) {
-                            if ($nullBrush) {
-                                // No op
-                                $op = 'n';
-                            } else {
-                                // Fill
-                                if (\PHP_VERSION_ID < 80000) {
-                                    imagefilledpolygon($this->gd, $points, $numpoints, $dataFillColor);
-                                } else {
-                                    /* @phpstan-ignore-next-line */
-                                    imagefilledpolygon($this->gd, $points, $dataFillColor);
-                                }
-                            }
-                        } else {
-                            if ($nullBrush) {
-                                // Stroke
-                                \imagepolygon($this->gd, $points, $numpoints, $dataDrawColor);
-                            } else {
-                                // Stroke and Fill
-                                \imagepolygon($this->gd, $points, $numpoints, $dataDrawColor);
-                                if (\PHP_VERSION_ID < 80000) {
-                                    imagefilledpolygon($this->gd, $points, $numpoints, $dataFillColor);
-                                } else {
-                                    /* @phpstan-ignore-next-line */
-                                    imagefilledpolygon($this->gd, $points, $dataFillColor);
-                                }
-                            }
-                        }
-                        if ($modePolyFill == 1 && (($nullPen && !$nullBrush) || (!$nullPen && $nullBrush))) {
-                            // Even-odd fill
-                        }
-                    }
-                    break;
-                default:
-                    if ($this->hasExceptionsEnabled()) {
-                        throw new WMFException('Reader : Function not implemented : 0x' . str_pad(dechex($recordType), 4, '0', STR_PAD_LEFT));
-                    }
-
-                    return false;
-            }
+            return false;
+        } finally {
+            restore_error_handler();
         }
 
         return true;
     }
 
-    protected function readHeader(): void
+    protected function readRecords(): void
     {
-        list(, $key) = unpack('L', substr($this->content, 0, 4));
-        list(, $handle) = unpack('S', substr($this->content, 4, 2));
-        list(, $left) = unpack('S', substr($this->content, 6, 2));
-        list(, $top) = unpack('S', substr($this->content, 8, 2));
-        list(, $right) = unpack('S', substr($this->content, 10, 2));
-        list(, $bottom) = unpack('S', substr($this->content, 12, 2));
-        list(, $this->unitPerInch) = unpack('S', substr($this->content, 14, 2));
-        list(, $reserved) = unpack('L', substr($this->content, 16, 4));
-        list(, $checksum) = unpack('S', substr($this->content, 18, 2));
+        $pos = $this->readHeader();
+        $this->objects = [];
 
-        $this->pos = 18;
-        if ($key == (int) 0x9AC6CDD7) {
-            $this->pos += 22;
-        }
-    }
+        $contentLen = strlen($this->content);
+        while ($pos + 6 <= $contentLen) {
+            $header = unpack('Vsize/vfunction', (string) substr($this->content, $pos, 6));
+            // Size of the record in 16-bit words
+            $size = (int) $header['size'];
+            $function = (int) $header['function'];
+            if ($size < 3 || $pos + 2 * $size > $contentLen) {
+                break;
+            }
+            $params = (string) substr($this->content, $pos + 6, 2 * $size - 6);
+            $pos += 2 * $size;
 
-    /**
-     * @return array<int, int>
-     */
-    protected function resetCoordinates(int $x, int $y): array
-    {
-        $x -= $this->windowOriginX;
-
-        $midHeight = $this->windowHeight / 2;
-        $y += ($this->windowHeight - $this->windowOriginY);
-        if ($y > $midHeight) {
-            $y -= ($y - $midHeight) * 2;
-        } else {
-            $y += ($midHeight - $y) * 2;
-        }
-
-        return [$x, $y];
-    }
-
-    /**
-     * @param array<string, string> $gdiObject
-     */
-    protected function addGDIObject(array $gdiObject, ?int $idx = null): void
-    {
-        if (!$idx) {
-            // Find next available slot
-            $idx = 0;
-
-            if (!empty($this->gdiObjects)) {
-                $empty = false;
-                $i = 0;
-                while (!$empty) {
-                    $empty = !isset($this->gdiObjects[$i]);
-                    ++$i;
-                }
-                $idx = $i - 1;
+            if ($function == self::META_EOF) {
+                break;
+            }
+            if (in_array($function, self::IGNORED_RECORDS)) {
+                continue;
+            }
+            if (!$this->readRecord($function, $params, $size)) {
+                throw new WMFException('Reader : Function not implemented : 0x' . str_pad(dechex($function), 4, '0', STR_PAD_LEFT));
             }
         }
 
-        $this->gdiObjects[$idx] = $gdiObject;
+        $this->gd = $this->renderer->render();
+    }
+
+    /**
+     * Creates the renderer from the placeable header : its bounding box is drawn in the image
+     *
+     * @return int Position of the first record
+     */
+    protected function readHeader(): int
+    {
+        $header = unpack('Vkey/vhandle/sleft/stop/sright/sbottom/vinch', (string) substr($this->content, 0, 16));
+        // Number of logical units per inch (1440 : twips)
+        $unitsPerInch = $header['inch'] ?: 1440;
+        $boundsWidth = $header['right'] - $header['left'];
+        $boundsHeight = $header['bottom'] - $header['top'];
+        $width = (int) max(1, ceil(abs($boundsWidth) / $unitsPerInch * self::DPI));
+        $height = (int) max(1, ceil(abs($boundsHeight) / $unitsPerInch * self::DPI));
+
+        // The device units are the pixels of the image : the window (by default, the bounding box) is mapped to the image
+        $this->destroyImage($this->gd);
+        $this->gd = false;
+        $this->renderer = new Renderer($width, $height, 0, 0, 0, 0, $this->fontResolver);
+        $this->renderer
+            ->setMapMode(Renderer::MM_ANISOTROPIC)
+            ->setWindowOrg($header['left'], $header['top'])
+            ->setWindowExt($boundsWidth ?: 1, $boundsHeight ?: 1)
+            ->setViewportOrg(0, 0)
+            ->setViewportExt($width, $height);
+
+        // META_HEADER follows the placeable header : its size is in 16-bit words
+        list(, $headerSize) = unpack('v', (string) substr($this->content, 22 + 2, 2));
+
+        return 22 + 2 * $headerSize;
+    }
+
+    /**
+     * Returns false if the record is not supported
+     *
+     * @param string $params Parameters of the record
+     * @param int $size Size of the record in 16-bit words
+     */
+    protected function readRecord(int $function, string $params, int $size): bool
+    {
+        $renderer = $this->renderer;
+        switch ($function) {
+            case self::META_SAVEDC:
+                $renderer->saveDC();
+                break;
+            case self::META_RESTOREDC:
+                $renderer->restoreDC($this->readShorts($params, 0, 1)[0]);
+                break;
+            case self::META_SETWINDOWORG:
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $renderer->setWindowOrg($x, $y);
+                break;
+            case self::META_SETWINDOWEXT:
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $renderer->setWindowExt($x, $y);
+                break;
+            case self::META_OFFSETWINDOWORG:
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $renderer->offsetWindowOrg($x, $y);
+                break;
+            case self::META_SCALEWINDOWEXT:
+                list($yDenom, $yNum, $xDenom, $xNum) = $this->readShorts($params, 0, 4);
+                $renderer->scaleWindowExt($xNum, $xDenom, $yNum, $yDenom);
+                break;
+            case self::META_SETBKMODE:
+                $renderer->setBkMode($this->readUShort($params, 0));
+                break;
+            case self::META_SETPOLYFILLMODE:
+                $renderer->setPolyFillMode($this->readUShort($params, 0));
+                break;
+            case self::META_SETTEXTALIGN:
+                $renderer->setTextAlign($this->readUShort($params, 0));
+                break;
+            case self::META_SETBKCOLOR:
+                $renderer->setBkColor($this->readColor($params, 0));
+                break;
+            case self::META_SETTEXTCOLOR:
+                $renderer->setTextColor($this->readColor($params, 0));
+                break;
+
+                // Objects
+            case self::META_CREATEPENINDIRECT:
+                $pen = unpack('vstyle/swidth/sunused/Cr/Cg/Cb', (string) substr($params, 0, 9));
+                $this->addObject([
+                    'type' => 'pen',
+                    'style' => $pen['style'],
+                    'width' => $pen['width'],
+                    'geometric' => true,
+                    'color' => [$pen['r'], $pen['g'], $pen['b']],
+                ]);
+                break;
+            case self::META_CREATEBRUSHINDIRECT:
+                $brush = unpack('vstyle/Cr/Cg/Cb', (string) substr($params, 0, 5));
+                $this->addObject([
+                    'type' => 'brush',
+                    'style' => $brush['style'],
+                    'color' => [$brush['r'], $brush['g'], $brush['b']],
+                ]);
+                break;
+            case self::META_CREATEFONTINDIRECT:
+                $font = unpack('sheight/swidth/sescapement/sorientation/sweight/Citalic/Cunderline/CstrikeOut/Ccharset/CoutPrecision/CclipPrecision/Cquality/CpitchAndFamily', (string) substr($params, 0, 18));
+                $this->addObject([
+                    'type' => 'font',
+                    'height' => $font['height'],
+                    'escapement' => $font['escapement'],
+                    'weight' => $font['weight'],
+                    'italic' => $font['italic'] > 0,
+                    'underline' => $font['underline'] > 0,
+                    'strikeOut' => $font['strikeOut'] > 0,
+                    'charset' => $font['charset'],
+                    'pitchAndFamily' => $font['pitchAndFamily'],
+                    'face' => Encoding::decodeANSI((string) substr($params, 18, 32)),
+                ]);
+                break;
+            case self::META_DIBCREATEPATTERNBRUSH:
+            case self::META_CREATEPATTERNBRUSH:
+                // Pattern brushes are approximated by the average color of the pattern
+                if ($function == self::META_CREATEPATTERNBRUSH) {
+                    // Bitmap16 header, 18 reserved bytes, bits
+                    $bitmap = $this->requireBitmap(Bitmap::readBitmap16((string) substr($params, 0, 10) . (string) substr($params, 28)), $function);
+                } else {
+                    list($style, $colorUsage) = array_values(unpack('v2', (string) substr($params, 0, 4)));
+                    // BS_PATTERN : Bitmap16, else DIB
+                    $bitmap = $this->requireBitmap(
+                        $style == 3
+                            ? Bitmap::readBitmap16((string) substr($params, 4))
+                            : Bitmap::readPackedDIB((string) substr($params, 4), $colorUsage == Bitmap::DIB_PAL_COLORS),
+                        $function
+                    );
+                }
+                $this->addObject([
+                    'type' => 'brush',
+                    'style' => 0,
+                    'color' => Bitmap::getAverageColor($bitmap),
+                ]);
+                break;
+            case self::META_CREATEREGION:
+                $this->addObject(['type' => 'region', 'rectangles' => $this->readRegion($params)]);
+                break;
+            case self::META_CREATEPALETTE:
+                $this->addObject(['type' => 'other']);
+                break;
+            case self::META_SELECTOBJECT:
+                $object = $this->objects[$this->readUShort($params, 0)] ?? null;
+                if ($object && $object['type'] == 'region') {
+                    $renderer->selectClipRegion($object['rectangles'], Rasterizer::RGN_COPY, false);
+                } elseif ($object) {
+                    $renderer->selectObject($object);
+                }
+                break;
+            case self::META_DELETEOBJECT:
+                unset($this->objects[$this->readUShort($params, 0)]);
+                break;
+
+                // Regions & clipping
+            case self::META_SELECTCLIPREGION:
+                $region = $this->getRegion($this->readUShort($params, 0));
+                if ($region === null) {
+                    $renderer->resetClipRegion();
+                } else {
+                    $renderer->selectClipRegion($region, Rasterizer::RGN_COPY, false);
+                }
+                break;
+            case self::META_INTERSECTCLIPRECT:
+            case self::META_EXCLUDECLIPRECT:
+                list($bottom, $right, $top, $left) = $this->readShorts($params, 0, 4);
+                if ($function == self::META_INTERSECTCLIPRECT) {
+                    $renderer->intersectClipRect($left, $top, $right, $bottom);
+                } else {
+                    $renderer->excludeClipRect($left, $top, $right, $bottom);
+                }
+                break;
+            case self::META_OFFSETCLIPRGN:
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $renderer->offsetClipRegion($x, $y);
+                break;
+            case self::META_PAINTREGION:
+                $renderer->fillRectangles($this->getRegion($this->readUShort($params, 0)) ?? []);
+                break;
+            case self::META_FILLREGION:
+            case self::META_FRAMEREGION:
+                $region = $this->getRegion($this->readUShort($params, 0)) ?? [];
+                $brush = $this->objects[$this->readUShort($params, 2)] ?? null;
+                if (!$brush || $brush['type'] != 'brush' || $brush['style'] == 1) {
+                    break;
+                }
+                if ($function == self::META_FRAMEREGION) {
+                    // The frame of each rectangle of the region
+                    list($frameHeight, $frameWidth) = $this->readShorts($params, 4, 2);
+                    $frames = [];
+                    foreach ($region as list($left, $top, $right, $bottom)) {
+                        $frames[] = [$left, $top, $right, $top + $frameHeight];
+                        $frames[] = [$left, $bottom - $frameHeight, $right, $bottom];
+                        $frames[] = [$left, $top, $left + $frameWidth, $bottom];
+                        $frames[] = [$right - $frameWidth, $top, $right, $bottom];
+                    }
+                    $region = $frames;
+                }
+                $renderer->fillRectangles($region, $brush['color']);
+                break;
+
+                // Shapes
+            case self::META_MOVETO:
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $renderer->moveTo($x, $y);
+                break;
+            case self::META_LINETO:
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $renderer->lineTo($x, $y);
+                break;
+            case self::META_POLYLINE:
+                $renderer->polyline($this->readPoints($params, 2, $this->readShorts($params, 0, 1)[0]));
+                break;
+            case self::META_POLYGON:
+                $renderer->polygon($this->readPoints($params, 2, $this->readShorts($params, 0, 1)[0]));
+                break;
+            case self::META_POLYPOLYGON:
+                $numPolys = $this->readUShort($params, 0);
+                $counts = $numPolys > 0 ? array_values(unpack('v' . $numPolys, (string) substr($params, 2, 2 * $numPolys))) : [];
+                $offset = 2 + 2 * $numPolys;
+                $polygons = [];
+                foreach ($counts as $count) {
+                    $polygons[] = $this->readPoints($params, $offset, $count);
+                    $offset += 4 * $count;
+                }
+                $renderer->polyPolygon($polygons);
+                break;
+            case self::META_RECTANGLE:
+                list($bottom, $right, $top, $left) = $this->readShorts($params, 0, 4);
+                $renderer->rectangle($left, $top, $right, $bottom);
+                break;
+            case self::META_ELLIPSE:
+                list($bottom, $right, $top, $left) = $this->readShorts($params, 0, 4);
+                $renderer->ellipse($left, $top, $right, $bottom);
+                break;
+            case self::META_ROUNDRECT:
+                list($cornerHeight, $cornerWidth, $bottom, $right, $top, $left) = $this->readShorts($params, 0, 6);
+                $renderer->roundRect($left, $top, $right, $bottom, $cornerWidth, $cornerHeight);
+                break;
+            case self::META_ARC:
+            case self::META_PIE:
+            case self::META_CHORD:
+                list($yEnd, $xEnd, $yStart, $xStart, $bottom, $right, $top, $left) = $this->readShorts($params, 0, 8);
+                if ($function == self::META_ARC) {
+                    $renderer->arc($left, $top, $right, $bottom, $xStart, $yStart, $xEnd, $yEnd);
+                } elseif ($function == self::META_PIE) {
+                    $renderer->pie($left, $top, $right, $bottom, $xStart, $yStart, $xEnd, $yEnd);
+                } else {
+                    $renderer->chord($left, $top, $right, $bottom, $xStart, $yStart, $xEnd, $yEnd);
+                }
+                break;
+            case self::META_SETPIXEL:
+                list($y, $x) = $this->readShorts($params, 4, 2);
+                $renderer->setPixel($x, $y, $this->readColor($params, 0));
+                break;
+            case self::META_FLOODFILL:
+                list($y, $x) = $this->readShorts($params, 4, 2);
+                $renderer->floodFill($x, $y, $this->readColor($params, 0), false);
+                break;
+            case self::META_EXTFLOODFILL:
+                list($y, $x) = $this->readShorts($params, 6, 2);
+                // FLOODFILLSURFACE (1) or FLOODFILLBORDER (0)
+                $renderer->floodFill($x, $y, $this->readColor($params, 2), $this->readUShort($params, 0) == 1);
+                break;
+
+                // Texts
+            case self::META_TEXTOUT:
+                $length = $this->readShorts($params, 0, 1)[0];
+                $text = Encoding::decodeANSI((string) substr($params, 2, max(0, $length)));
+                $offset = 2 + $length + $length % 2;
+                list($y, $x) = $this->readShorts($params, $offset, 2);
+                $renderer->textOut($x, $y, $text);
+                break;
+            case self::META_EXTTEXTOUT:
+                list($y, $x, $length) = $this->readShorts($params, 0, 3);
+                $options = $this->readUShort($params, 6);
+                $offset = 8;
+                $rectangle = [0, 0, 0, 0];
+                // ETO_OPAQUE or ETO_CLIPPED : the rectangle is present
+                if ($options & 0x06) {
+                    $rectangle = $this->readShorts($params, $offset, 4);
+                    $offset += 8;
+                }
+                $length = max(0, $length);
+                $text = Encoding::decodeANSI((string) substr($params, $offset, $length));
+                $offset += $length + $length % 2;
+                $dx = strlen($params) >= $offset + 2 * $length && $length > 0 ? $this->readShorts($params, $offset, $length) : [];
+                $renderer->textOut($x, $y, $text, $dx, $options, $rectangle);
+                break;
+
+                // Bitmaps
+            case self::META_PATBLT:
+                $rop = $this->readUInt($params, 0);
+                list($height, $width, $y, $x) = $this->readShorts($params, 4, 4);
+                $renderer->patBlt($x, $y, $x + $width, $y + $height, $rop);
+                break;
+            case self::META_BITBLT:
+            case self::META_DIBBITBLT:
+            case self::META_STRETCHBLT:
+            case self::META_DIBSTRETCHBLT:
+                $this->readBitBlt($function, $params, $size);
+                break;
+            case self::META_STRETCHDIB:
+                $rop = $this->readUInt($params, 0);
+                $colorUsage = $this->readUShort($params, 4);
+                list($srcHeight, $srcWidth, $ySrc, $xSrc, $destHeight, $destWidth, $yDest, $xDest) = $this->readShorts($params, 6, 8);
+                if ($rop == Renderer::ROP_NOP) {
+                    break;
+                }
+                $bitmap = $this->requireBitmap(Bitmap::readPackedDIB((string) substr($params, 22), $colorUsage == Bitmap::DIB_PAL_COLORS), $function);
+                $renderer->drawBitmap($bitmap, $xDest, $yDest, $destWidth, $destHeight, $xSrc, $ySrc, $srcWidth, $srcHeight);
+                break;
+            case self::META_SETDIBTODEV:
+                $colorUsage = $this->readUShort($params, 0);
+                list(, , $yDib, $xDib, $height, $width, $yDest, $xDest) = $this->readShorts($params, 2, 8);
+                $bitmap = $this->requireBitmap(Bitmap::readPackedDIB((string) substr($params, 18), $colorUsage == Bitmap::DIB_PAL_COLORS), $function);
+                $renderer->drawBitmap($bitmap, $xDest, $yDest, $width, $height, $xDib, $yDib, $width, $height);
+                break;
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Reads META_BITBLT, META_DIBBITBLT, META_STRETCHBLT & META_DIBSTRETCHBLT records
+     */
+    protected function readBitBlt(int $function, string $params, int $size): void
+    {
+        $rop = $this->readUInt($params, 0);
+        if ($rop == Renderer::ROP_NOP) {
+            return;
+        }
+        $isStretch = in_array($function, [self::META_STRETCHBLT, self::META_DIBSTRETCHBLT]);
+        // Without bitmap, the size of the record is defined by the high byte of the function
+        $hasBitmap = $size != ($function >> 8) + 3;
+
+        $values = $this->readShorts($params, 4, $isStretch ? 9 : 7);
+        $srcWidth = $srcHeight = 0;
+        if ($isStretch) {
+            list($srcHeight, $srcWidth, $ySrc, $xSrc) = $values;
+            $offset = 4;
+        } else {
+            list($ySrc, $xSrc) = $values;
+            $offset = 2;
+        }
+        // Without bitmap, a reserved field precedes the destination
+        if (!$hasBitmap) {
+            ++$offset;
+        }
+        list($destHeight, $destWidth, $yDest, $xDest) = array_slice($values, $offset, 4);
+        if (!$isStretch) {
+            $srcWidth = $destWidth;
+            $srcHeight = $destHeight;
+        }
+
+        if (!$hasBitmap) {
+            $this->renderer->patBlt($xDest, $yDest, $xDest + $destWidth, $yDest + $destHeight, $rop);
+
+            return;
+        }
+
+        $data = (string) substr($params, 4 + 2 * ($offset + 4));
+        $bitmap = $this->requireBitmap(
+            in_array($function, [self::META_BITBLT, self::META_STRETCHBLT])
+                ? Bitmap::readBitmap16($data)
+                : Bitmap::readPackedDIB($data),
+            $function
+        );
+        $this->renderer->drawBitmap($bitmap, $xDest, $yDest, $destWidth, $destHeight, $xSrc, $ySrc, $srcWidth, $srcHeight);
+    }
+
+    /**
+     * Adds an object in the first free slot of the table of objects
+     *
+     * @param array<string, mixed> $object
+     */
+    protected function addObject(array $object): void
+    {
+        $index = 0;
+        while (isset($this->objects[$index])) {
+            ++$index;
+        }
+        $this->objects[$index] = $object;
+    }
+
+    /**
+     * Returns the rectangles of a region object
+     *
+     * @return array<array<int>>|null
+     */
+    protected function getRegion(int $index): ?array
+    {
+        $object = $this->objects[$index] ?? null;
+
+        return $object && $object['type'] == 'region' ? $object['rectangles'] : null;
+    }
+
+    /**
+     * Reads a Region object : a list of scans, each one containing horizontal intervals
+     *
+     * @return array<array<int>> Rectangles [left, top, right, bottom]
+     */
+    protected function readRegion(string $params): array
+    {
+        $length = strlen($params);
+        if ($length < 22) {
+            return [];
+        }
+        // Some writers (like libUEMF) use a 16-bit ObjectCount : the RegionSize field is then at offset 6
+        $isShortHeader = $this->readUShort($params, 6) == $length && $this->readUShort($params, 8) != $length;
+        $scanCount = $this->readShorts($params, $isShortHeader ? 8 : 10, 1)[0];
+        $offset = $isShortHeader ? 20 : 22;
+        $rectangles = [];
+        for ($i = 0; $i < $scanCount && $offset + 6 <= $length; ++$i) {
+            list($count, $top, $bottom) = $this->readShorts($params, $offset, 3);
+            $offset += 6;
+            // Truncated scans are read up to the end of the record
+            $count = min(max(0, $count), intdiv($length - $offset, 2));
+            for ($j = 0; $j + 1 < $count; $j += 2) {
+                list($left, $right) = $this->readShorts($params, $offset + 2 * $j, 2);
+                $rectangles[] = [$left, $top, $right, $bottom];
+            }
+            // Coordinates & Count2
+            $offset += 2 * $count + 2;
+        }
+
+        return $rectangles;
+    }
+
+    protected function readUShort(string $params, int $offset): int
+    {
+        list(, $value) = unpack('v', (string) substr($params, $offset, 2));
+
+        return (int) $value;
+    }
+
+    protected function readUInt(string $params, int $offset): int
+    {
+        list(, $value) = unpack('V', (string) substr($params, $offset, 4));
+
+        return (int) $value;
+    }
+
+    /**
+     * Reads signed 16-bit integers
+     *
+     * @return array<int>
+     */
+    protected function readShorts(string $params, int $offset, int $count): array
+    {
+        $values = array_values(unpack('v' . $count, (string) substr($params, $offset, 2 * $count)));
+        foreach ($values as $key => $value) {
+            $values[$key] = $value >= 0x8000 ? $value - 0x10000 : $value;
+        }
+
+        return $values;
+    }
+
+    /**
+     * Reads a COLORREF
+     *
+     * @return array<int>
+     */
+    protected function readColor(string $params, int $offset): array
+    {
+        return array_values(unpack('C3', (string) substr($params, $offset, 3)));
+    }
+
+    /**
+     * @return array<array<float>> Logical coordinates
+     */
+    protected function readPoints(string $params, int $offset, int $count): array
+    {
+        if ($count <= 0) {
+            return [];
+        }
+        $values = $this->readShorts($params, $offset, 2 * $count);
+
+        $points = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $points[] = [$values[2 * $i], $values[2 * $i + 1]];
+        }
+
+        return $points;
     }
 
     /**
@@ -344,41 +732,6 @@ class GD extends ReaderAbstract
      */
     public function getResource()
     {
-        // INCH_TO_POINT
-        $inchToPoint = 72;
-
-        $this->gd = imagescale(
-            $this->gd,
-            (int) ceil(($this->windowWidth / $this->unitPerInch) * $inchToPoint),
-            (int) ceil(($this->windowHeight / $this->unitPerInch) * $inchToPoint)
-        );
-        imagesavealpha($this->gd, true);
-
         return $this->gd;
-    }
-
-    public function save(string $filename, string $format): bool
-    {
-        switch (strtolower($format)) {
-            case 'gif':
-                return imagegif($this->getResource(), $filename);
-            case 'jpg':
-            case 'jpeg':
-                return imagejpeg($this->getResource(), $filename);
-            case 'png':
-                return imagepng($this->getResource(), $filename);
-            case 'webp':
-                return imagewebp($this->getResource(), $filename);
-            case 'wbmp':
-                return imagewbmp($this->getResource(), $filename);
-            case 'wmf':
-                return (bool) (file_put_contents($filename, $this->content) > 0);
-            default:
-                if ($this->hasExceptionsEnabled()) {
-                    throw new WMFException(sprintf('Format %s not supported', $format));
-                }
-
-                return false;
-        }
     }
 }
