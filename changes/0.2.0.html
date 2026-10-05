@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://phpoffice.github.io/WMF/changes/0.1.4.html">
+        <link rel="canonical" href="https://phpoffice.github.io/WMF/changes/0.2.0.html">
       
       
         <link rel="prev" href="../credits.html">
@@ -25,7 +25,7 @@
     
     
       
-        <title>0.1.4 (WIP) - WMF</title>
+        <title>0.2.0 (WIP) - WMF</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#014" class="md-skip">
+        <a href="#020" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              0.1.4 (WIP)
+              0.2.0 (WIP)
             
           </span>
         </div>
@@ -354,6 +354,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/emf.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EMF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/detector.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -460,7 +516,7 @@
   <span class="md-ellipsis">
     
   
-    0.1.4 (WIP)
+    0.2.0 (WIP)
   
 
     
@@ -471,14 +527,14 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <a href="0.1.4.html" class="md-nav__link md-nav__link--active">
+      <a href="0.2.0.html" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    0.1.4 (WIP)
+    0.2.0 (WIP)
   
 
     
@@ -881,18 +937,23 @@
   
 
 
-<h1 id="014">0.1.4</h1>
+<h1 id="020">0.2.0</h1>
 <h2 id="enhancements">Enhancements</h2>
 <ul>
-<li>N/A</li>
+<li>Added support for EMF files (<code>PhpOffice\WMF\Reader\EMF</code>) in <a href="https://github.com/PHPOffice/WMF/pull/9">#9</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
+<li>Added detection of the type of an image (<code>PhpOffice\WMF\Reader\Detector</code>) in <a href="https://github.com/PHPOffice/WMF/pull/9">#9</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
+<li>Added method <code>isSupported</code> to readers in <a href="https://github.com/PHPOffice/WMF/pull/9">#9</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
+<li><code>PhpOffice\WMF\Reader\WMF\GD</code> : Uses the renderer of EMF files (texts, curves, regions, clipping, bitmaps, antialiasing...) in <a href="https://github.com/PHPOffice/WMF/pull/9">#9</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
 </ul>
 <h2 id="bug-fixes">Bug fixes</h2>
 <ul>
-<li>N/A</li>
+<li><code>PhpOffice\WMF\Reader\WMF\Magic</code> : Use the next backend if Imagick doesn't support WMF files in <a href="https://github.com/PHPOffice/WMF/pull/9">#9</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
 </ul>
 <h2 id="miscellaneous">Miscellaneous</h2>
 <ul>
-<li>Added support for PHP 8.4 &amp; 8.5 by <a href="https://github/Progi1984">@Progi1984</a></li>
+<li>Added support for PHP 8.4 &amp; 8.5 in <a href="https://github.com/PHPOffice/WMF/pull/8">#8</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
+<li>Readers : Added a common abstract class <code>PhpOffice\WMF\Reader\ReaderAbstract</code> &amp; common traits (<code>PhpOffice\WMF\Reader\GDTrait</code>, <code>PhpOffice\WMF\Reader\ImagickTrait</code>, <code>PhpOffice\WMF\Reader\MagicTrait</code>) in <a href="https://github.com/PHPOffice/WMF/pull/9">#9</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
+<li>Added a renderer shared by GD readers (<code>PhpOffice\WMF\Renderer</code>) in <a href="https://github.com/PHPOffice/WMF/pull/9">#9</a> by <a href="https://github/Progi1984">@Progi1984</a></li>
 </ul>
 
 

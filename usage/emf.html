@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://phpoffice.github.io/WMF/usage/wmf.html">
+        <link rel="canonical" href="https://phpoffice.github.io/WMF/usage/emf.html">
       
       
-        <link rel="prev" href="../install.html">
+        <link rel="prev" href="wmf.html">
       
       
-        <link rel="next" href="emf.html">
+        <link rel="next" href="detector.html">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>WMF - WMF</title>
+        <title>EMF - WMF</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#wmf" class="md-skip">
+        <a href="#emf" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              WMF
+              EMF
             
           </span>
         </div>
@@ -332,6 +332,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="wmf.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WMF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -351,7 +379,7 @@
   <span class="md-ellipsis">
     
   
-    WMF
+    EMF
   
 
     
@@ -362,14 +390,14 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <a href="wmf.html" class="md-nav__link md-nav__link--active">
+      <a href="emf.html" class="md-nav__link md-nav__link--active">
         
   
   
   <span class="md-ellipsis">
     
   
-    WMF
+    EMF
   
 
     
@@ -507,10 +535,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#iswmf" class="md-nav__link">
+  <a href="#isemf" class="md-nav__link">
     <span class="md-ellipsis">
       
-        isWMF
+        isEMF
       
     </span>
   </a>
@@ -570,34 +598,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="emf.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    EMF
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1136,10 +1136,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#iswmf" class="md-nav__link">
+  <a href="#isemf" class="md-nav__link">
     <span class="md-ellipsis">
       
-        isWMF
+        isEMF
       
     </span>
   </a>
@@ -1215,32 +1215,37 @@
   
 
 
-<h1 id="wmf">WMF</h1>
-<p>You can load <code>.wmf</code> files.</p>
+<h1 id="emf">EMF</h1>
+<p>You can load <code>.emf</code> files.</p>
 <h2 id="backends">Backends</h2>
 <p>You can one of two current backends : <code>gd</code> or <code>imagick</code>.
 If you don't know which one used, you can use the magic one.</p>
 <p>By default, the order of the backends is Imagick, followed by GD.
 Each backend is tested on different criteria: extension loaded, format support.</p>
+<div class="admonition note">
+<p class="admonition-title">Imagick &amp; EMF</p>
+<p>ImageMagick supports EMF files only on Windows.
+On other systems, the magic backend uses GD.</p>
+</div>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\GD</span><span class="p">;</span>
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Imagick</span><span class="p">;</span>
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\GD</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Imagick</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="c1">// Choose which backend you want</span>
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">GD</span><span class="p">();</span>
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Imagick</span><span class="p">();</span>
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
 
-<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 </code></pre></div>
 <p>For next samples, I will use the magic one.</p>
 <h3 id="getbackends"><code>getBackends</code></h3>
 <p>This specific method for <code>Magic::class</code> returns backends sorted by priority.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
 
@@ -1250,9 +1255,9 @@ Each backend is tested on different criteria: extension loaded, format support.<
 <p>This specific method for <code>Magic::class</code> defines backends sorted by priority.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\GD</span><span class="p">;</span>
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Imagick</span><span class="p">;</span>
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\GD</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Imagick</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
 <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">setBackends</span><span class="p">([</span>
@@ -1263,25 +1268,26 @@ Each backend is tested on different criteria: extension loaded, format support.<
 <span class="nb">var_dump</span><span class="p">(</span><span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">getBackends</span><span class="p">());</span>
 </code></pre></div>
 <h2 id="gd-backend">GD backend</h2>
-<p>The <code>GD</code> backend is a renderer written in pure PHP, shared with the EMF reader (<code>PhpOffice\WMF\Renderer\GD</code>).
-Only placeable WMF files are supported : the image is generated at 72 DPI, based on the bounding box of the placeable header.
-The window of the file (<code>META_SETWINDOWORG</code> &amp; <code>META_SETWINDOWEXT</code>) is mapped to the image : the map mode and the viewport are ignored.</p>
+<p>The <code>GD</code> backend is a renderer written in pure PHP, shared with the WMF reader (<code>PhpOffice\WMF\Renderer\GD</code>).
+The image is generated at 96 DPI, based on the frame of the EMF file (big images are scaled down).</p>
 <p>It supports :</p>
 <ul>
-<li>shapes (polygons, polylines, rectangles, rounded rectangles, ellipses, arcs, chords, pies)</li>
+<li>paths &amp; shapes (polygons, polylines, Bézier curves, rectangles, rounded rectangles, ellipses, arcs, chords, pies)</li>
 <li>pens (width, end caps, joins) &amp; brushes (solid, pattern brushes are approximated by their average color)</li>
-<li>regions &amp; clipping</li>
-<li>bitmaps (<code>META_STRETCHDIB</code>, <code>META_DIBBITBLT</code>, <code>META_DIBSTRETCHBLT</code>, <code>META_BITBLT</code>, <code>META_STRETCHBLT</code>, <code>META_SETDIBTODEV</code>) &amp; flood fills</li>
-<li>texts (<code>META_TEXTOUT</code>, <code>META_EXTTEXTOUT</code>), with TrueType/OpenType fonts</li>
+<li>world &amp; page transforms (map modes, window, viewport)</li>
+<li>clipping (paths, rectangles, regions)</li>
+<li>bitmaps (<code>EMR_STRETCHDIBITS</code>, <code>EMR_BITBLT</code>, <code>EMR_STRETCHBLT</code>, including JPEG &amp; PNG bitmaps) &amp; gradients (<code>EMR_GRADIENTFILL</code>)</li>
+<li>texts (<code>EMR_EXTTEXTOUTW</code>, <code>EMR_EXTTEXTOUTA</code>, <code>EMR_SMALLTEXTOUT</code>), with TrueType/OpenType fonts</li>
 </ul>
-<p>If a not supported record is found (like <code>META_DRAWTEXT</code>), or a bitmap which is not supported (like compressed bitmaps, <code>BI_RLE4</code> &amp; <code>BI_RLE8</code>),
+<p>If a not supported record is found (like <code>EMR_ALPHABLEND</code>, <code>EMR_MASKBLT</code>, <code>EMR_PLGBLT</code>, <code>EMR_TRANSPARENTBLT</code>, <code>EMR_POLYDRAW</code> or <code>EMR_EXTFLOODFILL</code>),
+or a bitmap which is not supported (like compressed bitmaps, <code>BI_RLE4</code> &amp; <code>BI_RLE8</code>),
 an exception is thrown (or <code>load</code> returns <code>false</code>, if exceptions are disabled).
 Corrupted files throw an exception too.</p>
 <h3 id="known-limitations">Known limitations</h3>
 <ul>
-<li>Only placeable WMF files are supported.</li>
 <li>The background of the image is white : the image is never transparent.</li>
-<li>The map mode &amp; the viewport (<code>META_SETMAPMODE</code>, <code>META_SETVIEWPORTORG</code>, <code>META_SETVIEWPORTEXT</code>...) are ignored.</li>
+<li>The content outside of the frame of the file is clipped.</li>
+<li>EMF+ records are ignored : EMF+ "dual" files are drawn with their EMF records, EMF+ only files are empty.</li>
 <li>Pens :<ul>
 <li>dashed pens are drawn as solid lines,</li>
 <li>pens have a minimal width of one pixel.</li>
@@ -1292,38 +1298,42 @@ Corrupted files throw an exception too.</p>
 <li>pattern brushes are drawn with the average color of their pattern.</li>
 </ul>
 </li>
-<li>Regions : <code>META_INVERTREGION</code> is ignored, and <code>META_FRAMEREGION</code> draws the frame of each rectangle of the region.</li>
 <li>Bitmaps :<ul>
 <li>compressed bitmaps (<code>BI_RLE4</code> &amp; <code>BI_RLE8</code>) are not supported : an exception is thrown,</li>
-<li>bitmaps using the palette of the file (<code>DIB_PAL_COLORS</code>) and indexed device dependent bitmaps (<code>Bitmap16</code>) are drawn with a gray scale,
-  and monochrome <code>Bitmap16</code> are drawn in black &amp; white,</li>
+<li>bitmaps using the palette of the file (<code>DIB_PAL_COLORS</code>) are drawn with a gray scale (the palette is not supported),</li>
 <li>raster operations are not supported : bitmaps are copied (<code>SRCCOPY</code>), and rectangles without bitmap are only drawn
   for <code>PATCOPY</code>, <code>BLACKNESS</code> &amp; <code>WHITENESS</code>,</li>
 <li>corrupted JPEG &amp; PNG bitmaps are not drawn.</li>
 </ul>
 </li>
-<li>Flood fills (<code>META_FLOODFILL</code> &amp; <code>META_EXTFLOODFILL</code>) ignore the clipping region.</li>
 <li>Texts :<ul>
 <li>texts are not drawn if no font is found (see <a href="#fonts">Fonts</a>),</li>
 <li>the metrics of fonts are approximated (ascent, descent), the width &amp; the orientation of fonts are ignored,</li>
-<li>the charset is ignored : texts are decoded as Windows-1252, and symbol fonts (like <code>Symbol</code> or <code>Wingdings</code>) are drawn with another font.</li>
+<li>the vertical advances of characters (<code>ETO_PDY</code>) are ignored,</li>
+<li>the charset is ignored : symbol fonts (like <code>Symbol</code> or <code>Wingdings</code>) are drawn with another font.</li>
 </ul>
 </li>
-<li><code>META_SETROP2</code>, <code>META_SETSTRETCHBLTMODE</code>, <code>META_ESCAPE</code> &amp; palettes are ignored.</li>
+<li><code>EMR_SETROP2</code>, <code>EMR_SETSTRETCHBLTMODE</code> &amp; palettes are ignored.</li>
 </ul>
 <h3 id="fonts">Fonts</h3>
-<p>Texts are drawn with the TrueType/OpenType fonts (<code>.ttf</code> &amp; <code>.otf</code>) found in the system directories.
-You can define the directories where fonts are searched (recursively) with <code>setFontDirectories</code>.</p>
-<p>See <a href="emf.html#fonts">EMF &gt; Fonts</a> for more details.</p>
+<p>Texts are drawn with the TrueType/OpenType fonts (<code>.ttf</code> &amp; <code>.otf</code>) found in the system directories :</p>
+<ul>
+<li>Windows : <code>C:\Windows\Fonts</code></li>
+<li>MacOS : <code>/Library/Fonts</code>, <code>/System/Library/Fonts</code> &amp; <code>~/Library/Fonts</code></li>
+<li>Linux : <code>/usr/share/fonts</code>, <code>/usr/local/share/fonts</code>, <code>~/.fonts</code> &amp; <code>~/.local/share/fonts</code></li>
+</ul>
+<p>If a font is not available, a similar font is used (for example, <code>Liberation Sans</code> or <code>DejaVu Sans</code> for <code>Arial</code>).
+If no font is found, texts are not drawn.</p>
+<p>You can define the directories where fonts are searched (recursively) with <code>setFontDirectories</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\GD</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\GD</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">GD</span><span class="p">();</span>
 <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">setFontDirectories</span><span class="p">([</span>
     <span class="no">__DIR__</span> <span class="o">.</span> <span class="s1">'/fonts'</span><span class="p">,</span>
 <span class="p">]);</span>
-<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 </code></pre></div>
 <h2 id="methods">Methods</h2>
 <h3 id="getresource"><code>getResource</code></h3>
@@ -1332,77 +1342,77 @@ You can define the directories where fonts are searched (recursively) with <code
 The <code>Imagick</code> backend returns a <code>Imagick</code> object.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
-<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 
 <span class="nb">var_dump</span><span class="p">(</span><span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">getResource</span><span class="p">());</span>
 </code></pre></div>
 <h3 id="getmediatype"><code>getMediaType</code></h3>
-<p>The method returns the media type for a WMF file.</p>
+<p>The method returns the media type for a EMF file.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
 
 <span class="nv">$mediaType</span> <span class="o">=</span> <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">getMediaType</span><span class="p">();</span>
 
-<span class="k">echo</span> <span class="s1">'The media type for a WMF file is '</span> <span class="o">.</span> <span class="nv">$$mediaType</span><span class="p">;</span>
+<span class="k">echo</span> <span class="s1">'The media type for a EMF file is '</span> <span class="o">.</span> <span class="nv">$mediaType</span><span class="p">;</span>
 </code></pre></div>
-<h3 id="iswmf"><code>isWMF</code></h3>
+<h3 id="isemf"><code>isEMF</code></h3>
 <p>The method returns if the file is supported by the library.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
-<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 
-<span class="nv">$isWMF</span> <span class="o">=</span> <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">isWMF</span><span class="p">();</span>
+<span class="nv">$isEMF</span> <span class="o">=</span> <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">isEMF</span><span class="p">();</span>
 
-<span class="k">echo</span> <span class="s1">'The file sample.wmf '</span> <span class="o">.</span> <span class="p">(</span><span class="nv">$isWMF</span> <span class="o">?</span> <span class="s1">'is a WMF file'</span> <span class="o">:</span> <span class="s1">'is not a WMF file'</span><span class="p">);</span>
+<span class="k">echo</span> <span class="s1">'The file sample.emf '</span> <span class="o">.</span> <span class="p">(</span><span class="nv">$isEMF</span> <span class="o">?</span> <span class="s1">'is a EMF file'</span> <span class="o">:</span> <span class="s1">'is not a EMF file'</span><span class="p">);</span>
 </code></pre></div>
 <h3 id="issupported"><code>isSupported</code></h3>
 <p>The method returns if the reader can be used : the extension is loaded (and supports the format, for <code>Imagick</code>).
 For <code>Magic::class</code>, the method returns if one of its backends can be used.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Imagick</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Imagick</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Imagick</span><span class="p">();</span>
 
 <span class="k">echo</span> <span class="s1">'The Imagick backend '</span> <span class="o">.</span> <span class="p">(</span><span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">isSupported</span><span class="p">()</span> <span class="o">?</span> <span class="s1">'can'</span> <span class="o">:</span> <span class="s1">'can not'</span><span class="p">)</span> <span class="o">.</span> <span class="s1">' be used'</span><span class="p">;</span>
 </code></pre></div>
 <h3 id="load"><code>load</code></h3>
-<p>The method loads a WMF file in the object.
-The method returns <code>true</code> if the file has been correctly loaded, or <code>false</code> if it has not. </p>
+<p>The method loads a EMF file in the object.
+The method returns <code>true</code> if the file has been correctly loaded, or <code>false</code> if it has not.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
-<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 </code></pre></div>
 <h3 id="loadfromstring"><code>loadFromString</code></h3>
-<p>The method loads a WMF file in the object from a string.
-The method returns <code>true</code> if the file has been correctly loaded, or <code>false</code> if it has not. </p>
+<p>The method loads a EMF file in the object from a string.
+The method returns <code>true</code> if the file has been correctly loaded, or <code>false</code> if it has not.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
-<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">loadFromString</span><span class="p">(</span><span class="nb">file_get_contents</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">));</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">loadFromString</span><span class="p">(</span><span class="nb">file_get_contents</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">));</span>
 </code></pre></div>
 <h3 id="save"><code>save</code></h3>
-<p>The method transforms the loaded WMF file in an another image. </p>
+<p>The method transforms the loaded EMF file in an another image.</p>
 <div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
 
-<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\Magic</span><span class="p">;</span>
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\Magic</span><span class="p">;</span>
 
 <span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Magic</span><span class="p">();</span>
-<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">save</span><span class="p">(</span><span class="s1">'sample.png'</span><span class="p">,</span> <span class="s1">'png'</span><span class="p">);</span>
 </code></pre></div>
 

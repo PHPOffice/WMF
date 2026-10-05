@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <title>Dashboard for /home/runner/work/WMF/WMF/src/WMF/Renderer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="../.css/bootstrap.min.css" rel="stylesheet" type="text/css">
+  <link href="../.css/nv.d3.min.css" rel="stylesheet" type="text/css">
+  <link href="../.css/style.css" rel="stylesheet" type="text/css">
+  <link href="../.css/custom.css" rel="stylesheet" type="text/css">
+ </head>
+ <body>
+  <header>
+   <div class="container-fluid">
+    <div class="row">
+     <div class="col-md-12">
+      <nav aria-label="breadcrumb">
+       <ol class="breadcrumb">
+         <li class="breadcrumb-item"><a href="../index.html">/home/runner/work/WMF/WMF/src/WMF</a></li>
+         <li class="breadcrumb-item"><a href="index.html">Renderer</a></li>
+         <li class="breadcrumb-item active">(Dashboard)</li>
+
+       </ol>
+      </nav>
+     </div>
+    </div>
+   </div>
+  </header>
+  <div class="container-fluid">
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Classes</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="classCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="classComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Methods</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="methodCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="methodComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="GD.php.html#189"><abbr title="PhpOffice\WMF\Renderer\GD::getFontResolver">getFontResolver</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="GD.php.html#352"><abbr title="PhpOffice\WMF\Renderer\GD::offsetWindowOrg">offsetWindowOrg</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="GD.php.html#359"><abbr title="PhpOffice\WMF\Renderer\GD::offsetViewportOrg">offsetViewportOrg</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="GD.php.html#366"><abbr title="PhpOffice\WMF\Renderer\GD::scaleWindowExt">scaleWindowExt</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="GD.php.html#863"><abbr title="PhpOffice\WMF\Renderer\GD::angleArc">angleArc</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="GD.php.html#922"><abbr title="PhpOffice\WMF\Renderer\GD::fillRectangles">fillRectangles</abbr></a></td><td class="text-right">66%</td></tr>
+       <tr><td><a href="GD.php.html#402"><abbr title="PhpOffice\WMF\Renderer\GD::modifyWorldTransform">modifyWorldTransform</abbr></a></td><td class="text-right">85%</td></tr>
+       <tr><td><a href="GD.php.html#945"><abbr title="PhpOffice\WMF\Renderer\GD::floodFill">floodFill</abbr></a></td><td class="text-right">86%</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="GD.php.html#945"><abbr title="PhpOffice\WMF\Renderer\GD::floodFill">floodFill</abbr></a></td><td class="text-right">9</td></tr>
+       <tr><td><a href="GD.php.html#922"><abbr title="PhpOffice\WMF\Renderer\GD::fillRectangles">fillRectangles</abbr></a></td><td class="text-right">7</td></tr>
+       <tr><td><a href="GD.php.html#863"><abbr title="PhpOffice\WMF\Renderer\GD::angleArc">angleArc</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="GD.php.html#402"><abbr title="PhpOffice\WMF\Renderer\GD::modifyWorldTransform">modifyWorldTransform</abbr></a></td><td class="text-right">5</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <footer>
+    <hr/>
+    <p>
+     <small>Generated by <a href="https://github.com/sebastianbergmann/php-code-coverage" target="_top">php-code-coverage 6.1.4</a> using <a href="https://www.php.net/" target="_top">PHP 7.1.33</a> with <a href="https://xdebug.org/">Xdebug 2.9.8</a> and <a href="https://phpunit.de/">PHPUnit 7.5.20</a> at Mon Oct 5 15:22:31 UTC 2026.</small>
+    </p>
+   </footer>
+  </div>
+  <script src="../.js/jquery.min.js" type="text/javascript"></script>
+  <script src="../.js/d3.min.js" type="text/javascript"></script>
+  <script src="../.js/nv.d3.min.js" type="text/javascript"></script>
+  <script type="text/javascript">
+$(document).ready(function() {
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#classCoverageDistribution svg')
+      .datum(getCoverageDistributionData([0,0,0,0,0,0,0,0,0,0,4,1], "Class Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#methodCoverageDistribution svg')
+      .datum(getCoverageDistributionData([5,0,0,0,0,0,0,1,0,2,15,85], "Method Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getCoverageDistributionData(data, label) {
+    var labels = [
+      '0%',
+      '0-10%',
+      '10-20%',
+      '20-30%',
+      '30-40%',
+      '40-50%',
+      '50-60%',
+      '60-70%',
+      '70-80%',
+      '80-90%',
+      '90-100%',
+      '100%'
+    ];
+    var values = [];
+    $.each(labels, function(key) {
+      values.push({x: labels[key], y: data[key]});
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Cyclomatic Complexity');
+
+    d3.select('#classComplexity svg')
+      .datum(getComplexityData([[98.11320754716981,60,"<a href=\"Bitmap.php.html#17\">PhpOffice\\WMF\\Renderer\\Bitmap<\/a>"],[100,20,"<a href=\"Encoding.php.html#10\">PhpOffice\\WMF\\Renderer\\Encoding<\/a>"],[98.4375,35,"<a href=\"FontResolver.php.html#15\">PhpOffice\\WMF\\Renderer\\FontResolver<\/a>"],[94.89164086687306,270,"<a href=\"GD.php.html#17\">PhpOffice\\WMF\\Renderer\\GD<\/a>"],[99.11111111111111,90,"<a href=\"Rasterizer.php.html#12\">PhpOffice\\WMF\\Renderer\\Rasterizer<\/a>"]], 'Class Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Method Complexity');
+
+    d3.select('#methodComplexity svg')
+      .datum(getComplexityData([[100,19,"<a href=\"Bitmap.php.html#38\">PhpOffice\\WMF\\Renderer\\Bitmap::readDIB<\/a>"],[91.66666666666666,10,"<a href=\"Bitmap.php.html#98\">PhpOffice\\WMF\\Renderer\\Bitmap::readPackedDIB<\/a>"],[92.3076923076923,11,"<a href=\"Bitmap.php.html#129\">PhpOffice\\WMF\\Renderer\\Bitmap::readBitmap16<\/a>"],[100,6,"<a href=\"Bitmap.php.html#157\">PhpOffice\\WMF\\Renderer\\Bitmap::readImage<\/a>"],[100,3,"<a href=\"Bitmap.php.html#187\">PhpOffice\\WMF\\Renderer\\Bitmap::getAverageColor<\/a>"],[100,8,"<a href=\"Bitmap.php.html#209\">PhpOffice\\WMF\\Renderer\\Bitmap::readRow<\/a>"],[100,3,"<a href=\"Bitmap.php.html#244\">PhpOffice\\WMF\\Renderer\\Bitmap::getGrayPalette<\/a>"],[100,9,"<a href=\"Encoding.php.html#23\">PhpOffice\\WMF\\Renderer\\Encoding::decodeUTF16<\/a>"],[100,5,"<a href=\"Encoding.php.html#51\">PhpOffice\\WMF\\Renderer\\Encoding::decodeANSI<\/a>"],[100,6,"<a href=\"Encoding.php.html#66\">PhpOffice\\WMF\\Renderer\\Encoding::encodeUTF8<\/a>"],[100,1,"<a href=\"FontResolver.php.html#83\">PhpOffice\\WMF\\Renderer\\FontResolver::setDirectories<\/a>"],[100,9,"<a href=\"FontResolver.php.html#93\">PhpOffice\\WMF\\Renderer\\FontResolver::getDirectories<\/a>"],[96.29629629629629,16,"<a href=\"FontResolver.php.html#125\">PhpOffice\\WMF\\Renderer\\FontResolver::resolve<\/a>"],[100,8,"<a href=\"FontResolver.php.html#172\">PhpOffice\\WMF\\Renderer\\FontResolver::getIndex<\/a>"],[100,1,"<a href=\"FontResolver.php.html#207\">PhpOffice\\WMF\\Renderer\\FontResolver::normalize<\/a>"],[100,5,"<a href=\"GD.php.html#142\">PhpOffice\\WMF\\Renderer\\GD::__construct<\/a>"],[100,3,"<a href=\"GD.php.html#171\">PhpOffice\\WMF\\Renderer\\GD::__destruct<\/a>"],[100,1,"<a href=\"GD.php.html#181\">PhpOffice\\WMF\\Renderer\\GD::setPixelsPerMm<\/a>"],[0,1,"<a href=\"GD.php.html#189\">PhpOffice\\WMF\\Renderer\\GD::getFontResolver<\/a>"],[100,2,"<a href=\"GD.php.html#203\">PhpOffice\\WMF\\Renderer\\GD::render<\/a>"],[100,1,"<a href=\"GD.php.html#222\">PhpOffice\\WMF\\Renderer\\GD::getDefaultDC<\/a>"],[96.96969696969697,21,"<a href=\"GD.php.html#256\">PhpOffice\\WMF\\Renderer\\GD::getStockObject<\/a>"],[100,2,"<a href=\"GD.php.html#308\">PhpOffice\\WMF\\Renderer\\GD::selectObject<\/a>"],[100,1,"<a href=\"GD.php.html#317\">PhpOffice\\WMF\\Renderer\\GD::setMapMode<\/a>"],[100,1,"<a href=\"GD.php.html#324\">PhpOffice\\WMF\\Renderer\\GD::setWindowOrg<\/a>"],[100,1,"<a href=\"GD.php.html#331\">PhpOffice\\WMF\\Renderer\\GD::setWindowExt<\/a>"],[100,1,"<a href=\"GD.php.html#338\">PhpOffice\\WMF\\Renderer\\GD::setViewportOrg<\/a>"],[100,1,"<a href=\"GD.php.html#345\">PhpOffice\\WMF\\Renderer\\GD::setViewportExt<\/a>"],[0,1,"<a href=\"GD.php.html#352\">PhpOffice\\WMF\\Renderer\\GD::offsetWindowOrg<\/a>"],[0,1,"<a href=\"GD.php.html#359\">PhpOffice\\WMF\\Renderer\\GD::offsetViewportOrg<\/a>"],[0,1,"<a href=\"GD.php.html#366\">PhpOffice\\WMF\\Renderer\\GD::scaleWindowExt<\/a>"],[100,1,"<a href=\"GD.php.html#371\">PhpOffice\\WMF\\Renderer\\GD::scaleViewportExt<\/a>"],[100,3,"<a href=\"GD.php.html#376\">PhpOffice\\WMF\\Renderer\\GD::scaleExtent<\/a>"],[100,1,"<a href=\"GD.php.html#391\">PhpOffice\\WMF\\Renderer\\GD::setWorldTransform<\/a>"],[85.71428571428571,5,"<a href=\"GD.php.html#402\">PhpOffice\\WMF\\Renderer\\GD::modifyWorldTransform<\/a>"],[100,1,"<a href=\"GD.php.html#423\">PhpOffice\\WMF\\Renderer\\GD::setPolyFillMode<\/a>"],[100,1,"<a href=\"GD.php.html#430\">PhpOffice\\WMF\\Renderer\\GD::setArcDirection<\/a>"],[100,1,"<a href=\"GD.php.html#437\">PhpOffice\\WMF\\Renderer\\GD::setMiterLimit<\/a>"],[100,1,"<a href=\"GD.php.html#447\">PhpOffice\\WMF\\Renderer\\GD::setTextColor<\/a>"],[100,1,"<a href=\"GD.php.html#457\">PhpOffice\\WMF\\Renderer\\GD::setBkColor<\/a>"],[100,1,"<a href=\"GD.php.html#467\">PhpOffice\\WMF\\Renderer\\GD::setBkMode<\/a>"],[100,1,"<a href=\"GD.php.html#474\">PhpOffice\\WMF\\Renderer\\GD::setTextAlign<\/a>"],[100,1,"<a href=\"GD.php.html#481\">PhpOffice\\WMF\\Renderer\\GD::saveDC<\/a>"],[100,3,"<a href=\"GD.php.html#491\">PhpOffice\\WMF\\Renderer\\GD::restoreDC<\/a>"],[100,1,"<a href=\"GD.php.html#512\">PhpOffice\\WMF\\Renderer\\GD::multiplyXForm<\/a>"],[100,14,"<a href=\"GD.php.html#530\">PhpOffice\\WMF\\Renderer\\GD::getMatrix<\/a>"],[100,2,"<a href=\"GD.php.html#589\">PhpOffice\\WMF\\Renderer\\GD::toCanvasPoints<\/a>"],[100,1,"<a href=\"GD.php.html#607\">PhpOffice\\WMF\\Renderer\\GD::deviceToCanvas<\/a>"],[100,1,"<a href=\"GD.php.html#620\">PhpOffice\\WMF\\Renderer\\GD::rasterize<\/a>"],[100,1,"<a href=\"GD.php.html#628\">PhpOffice\\WMF\\Renderer\\GD::getRectanglePoints<\/a>"],[100,2,"<a href=\"GD.php.html#636\">PhpOffice\\WMF\\Renderer\\GD::getEllipsePoints<\/a>"],[100,3,"<a href=\"GD.php.html#655\">PhpOffice\\WMF\\Renderer\\GD::getRoundRectPoints<\/a>"],[91.30434782608695,8,"<a href=\"GD.php.html#682\">PhpOffice\\WMF\\Renderer\\GD::getArcPoints<\/a>"],[100,2,"<a href=\"GD.php.html#725\">PhpOffice\\WMF\\Renderer\\GD::moveTo<\/a>"],[100,1,"<a href=\"GD.php.html#735\">PhpOffice\\WMF\\Renderer\\GD::lineTo<\/a>"],[100,1,"<a href=\"GD.php.html#747\">PhpOffice\\WMF\\Renderer\\GD::polylineTo<\/a>"],[100,1,"<a href=\"GD.php.html#757\">PhpOffice\\WMF\\Renderer\\GD::polyline<\/a>"],[100,1,"<a href=\"GD.php.html#767\">PhpOffice\\WMF\\Renderer\\GD::polygon<\/a>"],[100,1,"<a href=\"GD.php.html#777\">PhpOffice\\WMF\\Renderer\\GD::polyBezier<\/a>"],[100,2,"<a href=\"GD.php.html#789\">PhpOffice\\WMF\\Renderer\\GD::polyPolygon<\/a>"],[100,1,"<a href=\"GD.php.html#800\">PhpOffice\\WMF\\Renderer\\GD::rectangle<\/a>"],[100,1,"<a href=\"GD.php.html#807\">PhpOffice\\WMF\\Renderer\\GD::roundRect<\/a>"],[100,1,"<a href=\"GD.php.html#815\">PhpOffice\\WMF\\Renderer\\GD::ellipse<\/a>"],[100,1,"<a href=\"GD.php.html#822\">PhpOffice\\WMF\\Renderer\\GD::arc<\/a>"],[100,1,"<a href=\"GD.php.html#833\">PhpOffice\\WMF\\Renderer\\GD::arcTo<\/a>"],[100,1,"<a href=\"GD.php.html#840\">PhpOffice\\WMF\\Renderer\\GD::chord<\/a>"],[100,1,"<a href=\"GD.php.html#848\">PhpOffice\\WMF\\Renderer\\GD::pie<\/a>"],[0,2,"<a href=\"GD.php.html#863\">PhpOffice\\WMF\\Renderer\\GD::angleArc<\/a>"],[100,1,"<a href=\"GD.php.html#881\">PhpOffice\\WMF\\Renderer\\GD::setPixel<\/a>"],[90,7,"<a href=\"GD.php.html#899\">PhpOffice\\WMF\\Renderer\\GD::patBlt<\/a>"],[66.66666666666666,6,"<a href=\"GD.php.html#922\">PhpOffice\\WMF\\Renderer\\GD::fillRectangles<\/a>"],[86.66666666666667,9,"<a href=\"GD.php.html#945\">PhpOffice\\WMF\\Renderer\\GD::floodFill<\/a>"],[100,4,"<a href=\"GD.php.html#975\">PhpOffice\\WMF\\Renderer\\GD::drawFigures<\/a>"],[93.33333333333333,6,"<a href=\"GD.php.html#995\">PhpOffice\\WMF\\Renderer\\GD::drawTo<\/a>"],[100,5,"<a href=\"GD.php.html#1023\">PhpOffice\\WMF\\Renderer\\GD::fillFigures<\/a>"],[100,7,"<a href=\"GD.php.html#1043\">PhpOffice\\WMF\\Renderer\\GD::strokeFigures<\/a>"],[100,4,"<a href=\"GD.php.html#1072\">PhpOffice\\WMF\\Renderer\\GD::drawSpans<\/a>"],[100,1,"<a href=\"GD.php.html#1089\">PhpOffice\\WMF\\Renderer\\GD::beginPath<\/a>"],[100,1,"<a href=\"GD.php.html#1097\">PhpOffice\\WMF\\Renderer\\GD::endPath<\/a>"],[100,1,"<a href=\"GD.php.html#1104\">PhpOffice\\WMF\\Renderer\\GD::abortPath<\/a>"],[100,2,"<a href=\"GD.php.html#1112\">PhpOffice\\WMF\\Renderer\\GD::closeFigure<\/a>"],[100,1,"<a href=\"GD.php.html#1121\">PhpOffice\\WMF\\Renderer\\GD::fillPath<\/a>"],[100,1,"<a href=\"GD.php.html#1126\">PhpOffice\\WMF\\Renderer\\GD::strokePath<\/a>"],[100,1,"<a href=\"GD.php.html#1131\">PhpOffice\\WMF\\Renderer\\GD::strokeAndFillPath<\/a>"],[100,4,"<a href=\"GD.php.html#1136\">PhpOffice\\WMF\\Renderer\\GD::drawPath<\/a>"],[100,2,"<a href=\"GD.php.html#1160\">PhpOffice\\WMF\\Renderer\\GD::selectClipPath<\/a>"],[100,1,"<a href=\"GD.php.html#1172\">PhpOffice\\WMF\\Renderer\\GD::intersectClipRect<\/a>"],[100,1,"<a href=\"GD.php.html#1179\">PhpOffice\\WMF\\Renderer\\GD::excludeClipRect<\/a>"],[100,4,"<a href=\"GD.php.html#1186\">PhpOffice\\WMF\\Renderer\\GD::offsetClipRegion<\/a>"],[100,1,"<a href=\"GD.php.html#1207\">PhpOffice\\WMF\\Renderer\\GD::resetClipRegion<\/a>"],[100,3,"<a href=\"GD.php.html#1221\">PhpOffice\\WMF\\Renderer\\GD::selectClipRegion<\/a>"],[100,6,"<a href=\"GD.php.html#1243\">PhpOffice\\WMF\\Renderer\\GD::combineClip<\/a>"],[96.05263157894737,28,"<a href=\"GD.php.html#1277\">PhpOffice\\WMF\\Renderer\\GD::textOut<\/a>"],[97.5,15,"<a href=\"GD.php.html#1408\">PhpOffice\\WMF\\Renderer\\GD::drawGlyphs<\/a>"],[100,1,"<a href=\"GD.php.html#1471\">PhpOffice\\WMF\\Renderer\\GD::escapeText<\/a>"],[96.15384615384616,10,"<a href=\"GD.php.html#1485\">PhpOffice\\WMF\\Renderer\\GD::gradientFill<\/a>"],[91.66666666666666,2,"<a href=\"GD.php.html#1536\">PhpOffice\\WMF\\Renderer\\GD::drawGradientTriangle<\/a>"],[90.9090909090909,5,"<a href=\"GD.php.html#1563\">PhpOffice\\WMF\\Renderer\\GD::drawShadedSpans<\/a>"],[97.2972972972973,14,"<a href=\"GD.php.html#1590\">PhpOffice\\WMF\\Renderer\\GD::drawBitmap<\/a>"],[100,22,"<a href=\"Rasterizer.php.html#28\">PhpOffice\\WMF\\Renderer\\Rasterizer::rasterize<\/a>"],[94.11764705882352,6,"<a href=\"Rasterizer.php.html#118\">PhpOffice\\WMF\\Renderer\\Rasterizer::combineSpans<\/a>"],[100,24,"<a href=\"Rasterizer.php.html#154\">PhpOffice\\WMF\\Renderer\\Rasterizer::combineRow<\/a>"],[97.91666666666666,23,"<a href=\"Rasterizer.php.html#241\">PhpOffice\\WMF\\Renderer\\Rasterizer::getStrokePolygons<\/a>"],[100,6,"<a href=\"Rasterizer.php.html#331\">PhpOffice\\WMF\\Renderer\\Rasterizer::getJoinPolygon<\/a>"],[100,2,"<a href=\"Rasterizer.php.html#372\">PhpOffice\\WMF\\Renderer\\Rasterizer::getDiscPolygon<\/a>"],[100,2,"<a href=\"Rasterizer.php.html#387\">PhpOffice\\WMF\\Renderer\\Rasterizer::getSignedArea<\/a>"],[100,3,"<a href=\"Rasterizer.php.html#404\">PhpOffice\\WMF\\Renderer\\Rasterizer::flattenBeziers<\/a>"],[100,2,"<a href=\"Rasterizer.php.html#425\">PhpOffice\\WMF\\Renderer\\Rasterizer::flattenBezier<\/a>"]], 'Method Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getComplexityData(data, label) {
+    var values = [];
+    $.each(data, function(key) {
+      var value = Math.round(data[key][0]*100) / 100;
+      values.push({
+        x: value,
+        y: data[key][1],
+        class: data[key][2],
+        size: 0.05,
+        shape: 'diamond'
+      });
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+});
+  </script>
+ </body>
+</html>

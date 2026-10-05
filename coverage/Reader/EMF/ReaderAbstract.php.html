@@ -2,7 +2,7 @@
 <html lang="en">
  <head>
   <meta charset="UTF-8">
-  <title>Code Coverage for /home/runner/work/WMF/WMF/src/WMF/Reader/WMF/Imagick.php</title>
+  <title>Code Coverage for /home/runner/work/WMF/WMF/src/WMF/Reader/EMF/ReaderAbstract.php</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="../../.css/bootstrap.min.css" rel="stylesheet" type="text/css">
   <link href="../../.css/octicons.css" rel="stylesheet" type="text/css">
@@ -18,8 +18,8 @@
        <ol class="breadcrumb">
          <li class="breadcrumb-item"><a href="../../index.html">/home/runner/work/WMF/WMF/src/WMF</a></li>
          <li class="breadcrumb-item"><a href="../index.html">Reader</a></li>
-         <li class="breadcrumb-item"><a href="index.html">WMF</a></li>
-         <li class="breadcrumb-item active">Imagick.php</li>
+         <li class="breadcrumb-item"><a href="index.html">EMF</a></li>
+         <li class="breadcrumb-item active">ReaderAbstract.php</li>
 
        </ol>
       </nav>
@@ -73,7 +73,7 @@
       </tr>
 
       <tr>
-       <td class="success"><abbr title="PhpOffice\WMF\Reader\WMF\Imagick">Imagick</abbr></td>
+       <td class="success"><abbr title="PhpOffice\WMF\Reader\EMF\ReaderAbstract">ReaderAbstract</abbr></td>
        <td class="success big">       <div class="progress">
          <div class="progress-bar bg-success" role="progressbar" aria-valuenow="100.00" aria-valuemin="0" aria-valuemax="100" style="width: 100.00%">
            <span class="sr-only">100.00% covered (success)</span>
@@ -102,7 +102,7 @@
       </tr>
 
       <tr>
-       <td class="success" colspan="4">&nbsp;<a href="#13"><abbr title="isWMF(): bool">isWMF</abbr></a></td>
+       <td class="success" colspan="4">&nbsp;<a href="#11"><abbr title="getFormat(): string">getFormat</abbr></a></td>
        <td class="success big">       <div class="progress">
          <div class="progress-bar bg-success" role="progressbar" aria-valuenow="100.00" aria-valuemin="0" aria-valuemax="100" style="width: 100.00%">
            <span class="sr-only">100.00% covered (success)</span>
@@ -132,19 +132,17 @@
      <tr><td><div align="right"><a name="2"></a><a href="#2">2</a></div></td><td class="codeLine"></td></tr>
      <tr><td><div align="right"><a name="3"></a><a href="#3">3</a></div></td><td class="codeLine"><span class="default">declare</span><span class="keyword">(</span><span class="default">strict_types</span><span class="keyword">=</span><span class="default">1</span><span class="keyword">)</span><span class="keyword">;</span></td></tr>
      <tr><td><div align="right"><a name="4"></a><a href="#4">4</a></div></td><td class="codeLine"></td></tr>
-     <tr><td><div align="right"><a name="5"></a><a href="#5">5</a></div></td><td class="codeLine"><span class="keyword">namespace</span><span class="default">&nbsp;</span><span class="default">PhpOffice</span><span class="default">\</span><span class="default">WMF</span><span class="default">\</span><span class="default">Reader</span><span class="default">\</span><span class="default">WMF</span><span class="keyword">;</span></td></tr>
+     <tr><td><div align="right"><a name="5"></a><a href="#5">5</a></div></td><td class="codeLine"><span class="keyword">namespace</span><span class="default">&nbsp;</span><span class="default">PhpOffice</span><span class="default">\</span><span class="default">WMF</span><span class="default">\</span><span class="default">Reader</span><span class="default">\</span><span class="default">EMF</span><span class="keyword">;</span></td></tr>
      <tr><td><div align="right"><a name="6"></a><a href="#6">6</a></div></td><td class="codeLine"></td></tr>
-     <tr><td><div align="right"><a name="7"></a><a href="#7">7</a></div></td><td class="codeLine"><span class="keyword">use</span><span class="default">&nbsp;</span><span class="default">PhpOffice</span><span class="default">\</span><span class="default">WMF</span><span class="default">\</span><span class="default">Reader</span><span class="default">\</span><span class="default">ImagickTrait</span><span class="keyword">;</span></td></tr>
+     <tr><td><div align="right"><a name="7"></a><a href="#7">7</a></div></td><td class="codeLine"><span class="keyword">use</span><span class="default">&nbsp;</span><span class="default">PhpOffice</span><span class="default">\</span><span class="default">WMF</span><span class="default">\</span><span class="default">Reader</span><span class="default">\</span><span class="default">ReaderAbstract</span><span class="default">&nbsp;</span><span class="keyword">as</span><span class="default">&nbsp;</span><span class="default">ReaderAbstractBase</span><span class="keyword">;</span></td></tr>
      <tr><td><div align="right"><a name="8"></a><a href="#8">8</a></div></td><td class="codeLine"></td></tr>
-     <tr><td><div align="right"><a name="9"></a><a href="#9">9</a></div></td><td class="codeLine"><span class="keyword">class</span><span class="default">&nbsp;</span><span class="default">Imagick</span><span class="default">&nbsp;</span><span class="keyword">extends</span><span class="default">&nbsp;</span><span class="default">ReaderAbstract</span></td></tr>
+     <tr><td><div align="right"><a name="9"></a><a href="#9">9</a></div></td><td class="codeLine"><span class="keyword">abstract</span><span class="default">&nbsp;</span><span class="keyword">class</span><span class="default">&nbsp;</span><span class="default">ReaderAbstract</span><span class="default">&nbsp;</span><span class="keyword">extends</span><span class="default">&nbsp;</span><span class="default">ReaderAbstractBase</span><span class="default">&nbsp;</span><span class="keyword">implements</span><span class="default">&nbsp;</span><span class="default">ReaderInterface</span></td></tr>
      <tr><td><div align="right"><a name="10"></a><a href="#10">10</a></div></td><td class="codeLine"><span class="keyword">{</span></td></tr>
-     <tr><td><div align="right"><a name="11"></a><a href="#11">11</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">use</span><span class="default">&nbsp;</span><span class="default">ImagickTrait</span><span class="keyword">;</span></td></tr>
-     <tr><td><div align="right"><a name="12"></a><a href="#12">12</a></div></td><td class="codeLine"></td></tr>
-     <tr><td><div align="right"><a name="13"></a><a href="#13">13</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">public</span><span class="default">&nbsp;</span><span class="keyword">function</span><span class="default">&nbsp;</span><span class="default">isWMF</span><span class="keyword">(</span><span class="keyword">)</span><span class="keyword">:</span><span class="default">&nbsp;</span><span class="default">bool</span></td></tr>
-     <tr><td><div align="right"><a name="14"></a><a href="#14">14</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">{</span></td></tr>
-     <tr class="covered-by-large-tests popin" data-title="8 tests cover line 15" data-content="&lt;ul&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\ImagickTest::testIsWMF with data set #0&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\ImagickTest::testIsWMF with data set #1&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\ImagickTest::testIsWMF with data set #2&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\ImagickTest::testIsWMF with data set #3&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\MagicImagickTest::testIsWMF with data set #0&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\MagicImagickTest::testIsWMF with data set #1&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\MagicImagickTest::testIsWMF with data set #2&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\WMF\MagicImagickTest::testIsWMF with data set #3&lt;/li&gt;&lt;/ul&gt;" data-placement="bottom" data-html="true"><td><div align="right"><a name="15"></a><a href="#15">15</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">return</span><span class="default">&nbsp;</span><span class="default">$this</span><span class="default">-&gt;</span><span class="default">isImagickFormat</span><span class="keyword">(</span><span class="keyword">)</span><span class="keyword">;</span></td></tr>
-     <tr class="warning"><td><div align="right"><a name="16"></a><a href="#16">16</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">}</span></td></tr>
-     <tr><td><div align="right"><a name="17"></a><a href="#17">17</a></div></td><td class="codeLine"><span class="keyword">}</span></td></tr>
+     <tr><td><div align="right"><a name="11"></a><a href="#11">11</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">protected</span><span class="default">&nbsp;</span><span class="keyword">function</span><span class="default">&nbsp;</span><span class="default">getFormat</span><span class="keyword">(</span><span class="keyword">)</span><span class="keyword">:</span><span class="default">&nbsp;</span><span class="default">string</span></td></tr>
+     <tr><td><div align="right"><a name="12"></a><a href="#12">12</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">{</span></td></tr>
+     <tr class="covered-by-large-tests popin" data-title="8 tests cover line 13" data-content="&lt;ul&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\GDTest::testSaveEMF&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\GDTest::testSaveWithException&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\GDTest::testSaveWithoutException&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\GDTest::testMediaType&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\MagicGDTest::testMediaType&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\MagicTest::testLoadWithDefaultBackends with data set #0&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\MagicTest::testLoadWithDefaultBackends with data set #1&lt;/li&gt;&lt;li class=&quot;covered-by-large-tests&quot;&gt;Tests\PhpOffice\WMF\Reader\EMF\MagicTest::testIsSupported&lt;/li&gt;&lt;/ul&gt;" data-placement="bottom" data-html="true"><td><div align="right"><a name="13"></a><a href="#13">13</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">return</span><span class="default">&nbsp;</span><span class="default">'emf'</span><span class="keyword">;</span></td></tr>
+     <tr class="warning"><td><div align="right"><a name="14"></a><a href="#14">14</a></div></td><td class="codeLine"><span class="default">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="keyword">}</span></td></tr>
+     <tr><td><div align="right"><a name="15"></a><a href="#15">15</a></div></td><td class="codeLine"><span class="keyword">}</span></td></tr>
 
     </tbody>
    </table>
