@@ -150,11 +150,13 @@ class Bitmap
     }
 
     /**
-     * Decodes a JPEG or PNG image
+     * Decodes an image supported by GD (JPEG, PNG, GIF, BMP...)
+     *
+     * @param bool $keepAlpha If the pixels keep their GD alpha channel
      *
      * @return array{width: int, height: int, pixels: array<array<int>>}|null
      */
-    public static function readImage(string $data): ?array
+    public static function readImage(string $data, bool $keepAlpha = false): ?array
     {
         $image = @imagecreatefromstring($data);
         if (!$image) {
@@ -168,7 +170,7 @@ class Bitmap
         for ($y = 0; $y < $height; ++$y) {
             $line = [];
             for ($x = 0; $x < $width; ++$x) {
-                $line[] = imagecolorat($image, $x, $y) & 0xFFFFFF;
+                $line[] = $keepAlpha ? imagecolorat($image, $x, $y) : imagecolorat($image, $x, $y) & 0xFFFFFF;
             }
             $pixels[] = $line;
         }

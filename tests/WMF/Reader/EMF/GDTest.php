@@ -195,4 +195,42 @@ class GDTest extends AbstractTestReader
         $reader->enableExceptions(false);
         $this->assertFalse($reader->loadFromString($this->getContentEMFWithBitmap(1, 0)));
     }
+
+    public function testEMFPlus(): void
+    {
+        $file = $this->getResourceDir() . 'libemf2svg/emf/test-000.emf';
+
+        $reader = new GD();
+        $this->assertTrue($reader->isEMFPlusEnabled());
+        $this->assertFalse($reader->isEMFPlusRendered());
+        $this->assertTrue($reader->load($file));
+        $this->assertTrue($reader->isEMFPlusRendered());
+
+        // EMF+ disabled : only the EMF records are drawn
+        $this->assertInstanceOf(GD::class, $reader->setEMFPlusEnabled(false));
+        $this->assertFalse($reader->isEMFPlusEnabled());
+        $this->assertTrue($reader->load($file));
+        $this->assertFalse($reader->isEMFPlusRendered());
+
+        // EMF files have no EMF+ records
+        $reader->setEMFPlusEnabled(true);
+        $this->assertTrue($reader->load($this->getResourceDir() . 'computer_mail.emf'));
+        $this->assertFalse($reader->isEMFPlusRendered());
+    }
+
+    /**
+     * If the EMF+ records can not be drawn, the EMF records are drawn
+     */
+    public function testEMFPlusFallback(): void
+    {
+        $content = (string) file_get_contents($this->getResourceDir() . 'libemf2svg/emf/test-000.emf');
+        // The type of the first EMF+ record after the EMF+ header is replaced by an unknown type
+        list(, $headerSize) = unpack('V', substr($content, 4, 4));
+        list(, $commentSize) = unpack('V', substr($content, $headerSize + 4, 4));
+        $content = substr_replace($content, pack('v', 0x40FF), $headerSize + $commentSize + 16, 2);
+
+        $reader = new GD();
+        $this->assertTrue($reader->loadFromString($content));
+        $this->assertFalse($reader->isEMFPlusRendered());
+    }
 }
