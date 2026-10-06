@@ -501,6 +501,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#emf_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EMF+
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EMF+">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#methods-for-emf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods for EMF+
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-limitations-of-emf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations of EMF+
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#methods" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1102,6 +1141,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#emf_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EMF+
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EMF+">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#methods-for-emf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods for EMF+
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-limitations-of-emf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations of EMF+
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#methods" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1287,7 +1365,7 @@ Corrupted files throw an exception too.</p>
 <ul>
 <li>The background of the image is white : the image is never transparent.</li>
 <li>The content outside of the frame of the file is clipped.</li>
-<li>EMF+ records are ignored : EMF+ "dual" files are drawn with their EMF records, EMF+ only files are empty.</li>
+<li>For the limitations of EMF+ files, see <a href="#known-limitations-of-emf">EMF+ &gt; Known limitations</a>.</li>
 <li>Pens :<ul>
 <li>dashed pens are drawn as solid lines,</li>
 <li>pens have a minimal width of one pixel.</li>
@@ -1335,6 +1413,61 @@ If no font is found, texts are not drawn.</p>
 <span class="p">]);</span>
 <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 </code></pre></div>
+<h2 id="emf_1">EMF+</h2>
+<p>EMF+ files are EMF files containing EMF+ records (GDI+), in comments : the <code>GD</code> backend draws them.</p>
+<ul>
+<li>EMF+ "dual" files contain EMF+ records and EMF records (a fallback for applications not supporting EMF+) :
+  the EMF+ records are drawn, and only the EMF records following <code>EmfPlusGetDC</code> records are drawn (like GDI+).</li>
+<li>EMF+ "only" files contain only EMF+ records.</li>
+<li>If the EMF+ records can not be drawn (not supported or corrupted), the file is drawn with its EMF records.</li>
+</ul>
+<p>It supports :</p>
+<ul>
+<li>shapes (rectangles, polygons, lines, ellipses, arcs, pies, Bézier curves, cardinal curves), paths &amp; regions</li>
+<li>pens (width &amp; unit, start &amp; end caps, joins, dashes, arrows &amp; custom caps) &amp; brushes (solid colors with transparency,
+  hatches, textures, linear &amp; path gradients)</li>
+<li>world &amp; page transforms (units : pixel, point, inch, document, millimeter), containers &amp; saved states</li>
+<li>clipping (rectangles, paths, regions)</li>
+<li>images : bitmaps (all pixel formats, PNG, JPEG, GIF...) &amp; metafiles (placeable WMF, EMF &amp; EMF+), drawn in parallelograms</li>
+<li>texts (<code>EmfPlusDrawString</code> &amp; <code>EmfPlusDrawDriverString</code>)</li>
+</ul>
+<h3 id="methods-for-emf">Methods for EMF+</h3>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\GD</span><span class="p">;</span>
+
+<span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">GD</span><span class="p">();</span>
+<span class="c1">// Draws only the EMF records (EMF+ records are drawn by default)</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">setEMFPlusEnabled</span><span class="p">(</span><span class="k">false</span><span class="p">);</span>
+<span class="nb">var_dump</span><span class="p">(</span><span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">isEMFPlusEnabled</span><span class="p">());</span>
+
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
+<span class="c1">// If the file has been drawn with its EMF+ records</span>
+<span class="nb">var_dump</span><span class="p">(</span><span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">isEMFPlusRendered</span><span class="p">());</span>
+</code></pre></div>
+<h3 id="known-limitations-of-emf">Known limitations of EMF+</h3>
+<ul>
+<li>Rendering hints (antialiasing, interpolation, compositing...) are ignored : the drawing is always antialiased.</li>
+<li>Image attributes (color adjustments, wrap modes of images) &amp; image effects (<code>EmfPlusSerializableObject</code>) are ignored.</li>
+<li>Pens :<ul>
+<li>compound lines are drawn as a single line, the transform &amp; the alignment of pens are ignored,</li>
+<li>custom caps are drawn as filled shapes, triangle &amp; diamond caps are drawn as flat caps.</li>
+</ul>
+</li>
+<li>Brushes :<ul>
+<li>hatch styles other than horizontal, vertical, diagonal, cross &amp; percent styles are drawn with a pattern of 50%,</li>
+<li>the focus scales &amp; the surrounding colors (except the first one) of path gradients are ignored,</li>
+<li>the vertical blend of linear gradients is ignored.</li>
+</ul>
+</li>
+<li>Images : the source rectangle of metafiles is ignored (the whole metafile is drawn), and WMF files without placeable header are not drawn.</li>
+<li>Texts :<ul>
+<li>texts are not wrapped, and the flags of string formats (direction, trimming, tabs...) are ignored,</li>
+<li><code>EmfPlusDrawDriverString</code> with indexes of glyphs (instead of characters) is not supported.</li>
+</ul>
+</li>
+<li><code>EmfPlusStrokeFillPath</code>, the multi-format records &amp; the records of terminal services are ignored.</li>
+</ul>
 <h2 id="methods">Methods</h2>
 <h3 id="getresource"><code>getResource</code></h3>
 <p>The method returns the resource used in internal by the library.</p>
