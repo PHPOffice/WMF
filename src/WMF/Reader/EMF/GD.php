@@ -7,6 +7,7 @@ namespace PhpOffice\WMF\Reader\EMF;
 use GdImage;
 use PhpOffice\WMF\Exception\WMFException;
 use PhpOffice\WMF\Reader\Detector;
+use PhpOffice\WMF\Reader\EMFPlus\Player;
 use PhpOffice\WMF\Reader\GDTrait;
 use PhpOffice\WMF\Renderer\Bitmap;
 use PhpOffice\WMF\Renderer\Encoding;
@@ -150,9 +151,48 @@ class GD extends ReaderAbstract
      */
     protected $objects = [];
 
+    /**
+     * If the EMF+ records are drawn (else, only the EMF records are drawn)
+     *
+     * @var bool
+     */
+    protected $isEMFPlusEnabled = true;
+    /**
+     * If the last loaded file has been drawn with its EMF+ records
+     *
+     * @var bool
+     */
+    protected $isEMFPlusRendered = false;
+
     public function __construct()
     {
         $this->fontResolver = new FontResolver();
+    }
+
+    /**
+     * Enables/disables the drawing of EMF+ records
+     *
+     * When enabled (by default), EMF+ files are drawn with their EMF+ records, and only the EMF records following
+     * EmfPlusGetDC records are drawn. If the EMF+ records can not be drawn, the file is drawn with its EMF records.
+     */
+    public function setEMFPlusEnabled(bool $isEnabled): self
+    {
+        $this->isEMFPlusEnabled = $isEnabled;
+
+        return $this;
+    }
+
+    public function isEMFPlusEnabled(): bool
+    {
+        return $this->isEMFPlusEnabled;
+    }
+
+    /**
+     * Returns if the last loaded file has been drawn with its EMF+ records
+     */
+    public function isEMFPlusRendered(): bool
+    {
+        return $this->isEMFPlusRendered;
     }
 
     /**
@@ -198,8 +238,19 @@ class GD extends ReaderAbstract
             }
             throw new WMFException('Reader : Invalid file : ' . $errstr);
         });
+        $this->isEMFPlusRendered = false;
         try {
-            $this->readRecords();
+            if ($this->isEMFPlusEnabled && Detector::isEMFPlus((string) $this->content)) {
+                try {
+                    $this->readRecords(true);
+                    $this->isEMFPlusRendered = true;
+                } catch (WMFException $e) {
+                    // The EMF+ records can not be drawn : the EMF records are drawn
+                    $this->readRecords(false);
+                }
+            } else {
+                $this->readRecords(false);
+            }
         } catch (WMFException $e) {
             if ($this->hasExceptionsEnabled()) {
                 throw $e;
@@ -213,10 +264,15 @@ class GD extends ReaderAbstract
         return true;
     }
 
-    protected function readRecords(): void
+    /**
+     * @param bool $isEMFPlus If the EMF+ records are drawn (the EMF records are then drawn only after EmfPlusGetDC records)
+     */
+    protected function readRecords(bool $isEMFPlus = false): void
     {
         $this->readHeader();
         $this->objects = [];
+        $player = $isEMFPlus ? new Player($this->renderer) : null;
+        $isEMFPlaying = !$isEMFPlus;
 
         $contentLen = strlen($this->content);
         // The first record is the header
@@ -235,6 +291,15 @@ class GD extends ReaderAbstract
 
             if ($recordType == self::EMR_EOF) {
                 break;
+            }
+            // EMF+ records are stored in comments (after the "EMF+" identifier)
+            if ($player && $recordType == self::EMR_GDICOMMENT && $size >= 16 && (string) substr($record, 12, 4) === 'EMF+') {
+                list(, $dataSize) = unpack('V', (string) substr($record, 8, 4));
+                $isEMFPlaying = $player->play((string) substr($record, 16, max(0, min((int) $dataSize, $size - 12) - 4)));
+                continue;
+            }
+            if (!$isEMFPlaying) {
+                continue;
             }
             if (in_array($recordType, self::IGNORED_RECORDS)) {
                 continue;

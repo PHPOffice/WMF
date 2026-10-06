@@ -26,7 +26,7 @@ Read more about WMF:
 
     * WMF files
     * EMF files
-    * (EMF+ files, not for the moment)
+    * EMF+ files
 
 ## Requirements
 

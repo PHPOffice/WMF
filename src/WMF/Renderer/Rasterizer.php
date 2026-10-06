@@ -235,10 +235,11 @@ class Rasterizer
      * @param array<array<float>> $points
      * @param int $endCap PS_ENDCAP_ROUND (0x0000), PS_ENDCAP_SQUARE (0x0100) or PS_ENDCAP_FLAT (0x0200)
      * @param int $join PS_JOIN_ROUND (0x0000), PS_JOIN_BEVEL (0x1000) or PS_JOIN_MITER (0x2000)
+     * @param int|null $startCap Cap of the start of the line (null : $endCap)
      *
      * @return array<array<array<float>>>
      */
-    public static function getStrokePolygons(array $points, bool $closed, float $halfWidth, int $endCap, int $join, float $miterLimit): array
+    public static function getStrokePolygons(array $points, bool $closed, float $halfWidth, int $endCap, int $join, float $miterLimit, ?int $startCap = null): array
     {
         // Remove duplicated points
         $cleaned = [];
@@ -264,6 +265,7 @@ class Rasterizer
             return [self::getDiscPolygon($cleaned[0], $halfWidth)];
         }
 
+        $startCap = $startCap ?? $endCap;
         $polygons = [];
         // Normals of each segment
         $normals = [];
@@ -276,12 +278,12 @@ class Rasterizer
             $normals[$i] = [-$uy * $halfWidth, $ux * $halfWidth];
 
             // Square end caps extend the line by the half width
-            if (!$closed && $endCap == 0x0100) {
-                if ($i == 0) {
+            if (!$closed) {
+                if ($i == 0 && $startCap == 0x0100) {
                     $x1 -= $ux * $halfWidth;
                     $y1 -= $uy * $halfWidth;
                 }
-                if ($i == $count - 2) {
+                if ($i == $count - 2 && $endCap == 0x0100) {
                     $x2 += $ux * $halfWidth;
                     $y2 += $uy * $halfWidth;
                 }
@@ -297,8 +299,10 @@ class Rasterizer
         }
 
         // Round end caps
-        if (!$closed && $endCap == 0x0000) {
+        if (!$closed && $startCap == 0x0000) {
             $polygons[] = self::getDiscPolygon($cleaned[0], $halfWidth);
+        }
+        if (!$closed && $endCap == 0x0000) {
             $polygons[] = self::getDiscPolygon($cleaned[$count - 1], $halfWidth);
         }
 

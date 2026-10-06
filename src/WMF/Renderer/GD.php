@@ -1034,7 +1034,7 @@ class GD
             }
         }
 
-        $this->drawSpans($this->rasterize($polygons, $this->dc['polyFillMode'] == self::WINDING), $brush['color']);
+        $this->drawPaint($this->rasterize($polygons, $this->dc['polyFillMode'] == self::WINDING), $brush);
     }
 
     /**
@@ -1054,15 +1054,192 @@ class GD
             list($m11, $m12, $m21, $m22) = $this->getMatrix();
             $width = max($width, $pen['width'] * sqrt(abs($m11 * $m22 - $m12 * $m21)));
         }
-        $endCap = $pen['style'] & 0x0F00;
+        $endCap = $pen['endCap'] ?? $pen['style'] & 0x0F00;
+        $startCap = $pen['startCap'] ?? $endCap;
         $join = $pen['geometric'] ? $pen['style'] & 0xF000 : 0x0000;
 
-        $polygons = [];
+        // Shapes of the caps (like arrows) at the ends of open figures
+        $capPolygons = [];
         foreach ($figures as $figure) {
-            $polygons = array_merge($polygons, Rasterizer::getStrokePolygons($figure['points'], $figure['closed'], $width / 2, $endCap, $join, $this->dc['miterLimit']));
+            if ($figure['closed'] || count($figure['points']) < 2) {
+                continue;
+            }
+            if (!empty($pen['startCapShape'])) {
+                $capPolygons[] = $this->getCapPolygon(array_reverse($figure['points']), $pen['startCapShape'], $width);
+            }
+            if (!empty($pen['endCapShape'])) {
+                $capPolygons[] = $this->getCapPolygon($figure['points'], $pen['endCapShape'], $width);
+            }
         }
 
-        $this->drawSpans($this->rasterize($polygons, true), $pen['color']);
+        // Dashes : each dash is an open figure
+        if (!empty($pen['dashes'])) {
+            $dashed = [];
+            foreach ($figures as $figure) {
+                $dashed = array_merge($dashed, $this->getDashes($figure, $pen['dashes'], $pen['dashOffset'] ?? 0, $width));
+            }
+            $figures = $dashed;
+            $startCap = $endCap = $pen['dashCap'] ?? 0x0200;
+        }
+
+        $polygons = array_filter($capPolygons);
+        foreach ($figures as $figure) {
+            $polygons = array_merge($polygons, Rasterizer::getStrokePolygons($figure['points'], $figure['closed'], $width / 2, $endCap, $join, $this->dc['miterLimit'], $startCap));
+        }
+
+        $this->drawPaint($this->rasterize($polygons, true), $pen);
+    }
+
+    /**
+     * Splits a figure into dashes
+     *
+     * @param array{points: array<array<float>>, closed: bool} $figure
+     * @param array<float> $dashes Lengths of dashes & spaces, in pen widths
+     *
+     * @return array<array{points: array<array<float>>, closed: bool}>
+     */
+    protected function getDashes(array $figure, array $dashes, float $offset, float $width): array
+    {
+        $lengths = [];
+        foreach ($dashes as $dash) {
+            $lengths[] = max(0.01, $dash) * $width;
+        }
+        $points = $figure['points'];
+        if ($figure['closed'] && count($points) > 1) {
+            $points[] = $points[0];
+        }
+
+        $result = [];
+        $index = 0;
+        $remaining = $lengths[0];
+        // The offset moves the start of the pattern
+        $offset *= $width;
+        while ($offset > 0 && $lengths) {
+            if ($offset < $remaining) {
+                $remaining -= $offset;
+                break;
+            }
+            $offset -= $remaining;
+            $index = ($index + 1) % count($lengths);
+            $remaining = $lengths[$index];
+        }
+
+        $current = ($index % 2 == 0) ? [$points[0] ?? [0, 0]] : null;
+        for ($i = 0; $i + 1 < count($points); ++$i) {
+            list($x1, $y1) = $points[$i];
+            list($x2, $y2) = $points[$i + 1];
+            $length = hypot($x2 - $x1, $y2 - $y1);
+            $position = 0;
+            while ($length - $position > $remaining) {
+                $position += $remaining;
+                $point = [$x1 + ($x2 - $x1) * $position / $length, $y1 + ($y2 - $y1) * $position / $length];
+                if ($current !== null) {
+                    $current[] = $point;
+                    $result[] = ['points' => $current, 'closed' => false];
+                    $current = null;
+                } else {
+                    $current = [$point];
+                }
+                $index = ($index + 1) % count($lengths);
+                $remaining = $lengths[$index];
+            }
+            $remaining -= $length - $position;
+            if ($current !== null) {
+                $current[] = [$x2, $y2];
+            }
+        }
+        if ($current !== null && count($current) > 1) {
+            $result[] = ['points' => $current, 'closed' => false];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Returns the polygon of a cap (like an arrow) at the end of a line
+     *
+     * The shape is defined in pen widths : the end of the line is the origin, the y axis follows the direction of the line
+     *
+     * @param array<array<float>> $points Points of the line (canvas coordinates), the cap is drawn at the last one
+     * @param array<array<float>> $shape
+     *
+     * @return array<array<float>>
+     */
+    protected function getCapPolygon(array $points, array $shape, float $width): array
+    {
+        $end = array_pop($points);
+        // Direction of the last segment which is not empty
+        do {
+            $from = array_pop($points);
+            $length = $from === null ? 0 : hypot($end[0] - $from[0], $end[1] - $from[1]);
+        } while ($from !== null && $length == 0);
+        if ($from === null || count($shape) < 3) {
+            return [];
+        }
+        $ux = ($end[0] - $from[0]) / $length;
+        $uy = ($end[1] - $from[1]) / $length;
+
+        $polygon = [];
+        foreach ($shape as list($x, $y)) {
+            $polygon[] = [$end[0] + ($ux * $y - $uy * $x) * $width, $end[1] + ($uy * $y + $ux * $x) * $width];
+        }
+
+        return Rasterizer::getSignedArea($polygon) < 0 ? array_reverse($polygon) : $polygon;
+    }
+
+    /**
+     * Draws spans with a pen or a brush : its color, or its shader
+     *
+     * A shader is a callable returning the color [r, g, b, a] of a point, in logical coordinates (`space` : `logical`),
+     * or in pixels of the image (`space` : `device`)
+     *
+     * @param array<int, array<array<int>>> $spans
+     * @param array<string, mixed> $paint
+     */
+    protected function drawPaint(array $spans, array $paint): void
+    {
+        if (!isset($paint['shader'])) {
+            $this->drawSpans($spans, $paint['color']);
+
+            return;
+        }
+
+        $shader = $paint['shader'];
+        if (($paint['space'] ?? 'logical') == 'device') {
+            $supersampling = $this->supersampling;
+            $this->drawShadedSpans($spans, function (float $x, float $y) use ($shader, $supersampling): array {
+                return $shader($x / $supersampling, $y / $supersampling);
+            });
+
+            return;
+        }
+
+        list($m11, $m12, $m21, $m22, $dx, $dy) = $this->getMatrix();
+        $determinant = $m11 * $m22 - $m21 * $m12;
+        if ($determinant == 0) {
+            return;
+        }
+        $this->drawShadedSpans($spans, function (float $x, float $y) use ($shader, $m11, $m12, $m21, $m22, $dx, $dy, $determinant): array {
+            $x -= $dx;
+            $y -= $dy;
+
+            return $shader(($x * $m22 - $y * $m21) / $determinant, ($y * $m11 - $x * $m12) / $determinant);
+        });
+    }
+
+    /**
+     * Converts a color [r, g, b] or [r, g, b, a] (alpha from 0 : transparent to 255 : opaque) to a GD color
+     *
+     * @param array<int|float> $color
+     */
+    protected function toGDColor(array $color): int
+    {
+        $gdColor = ((int) $color[0] << 16) | ((int) $color[1] << 8) | (int) $color[2];
+        if (isset($color[3]) && $color[3] < 255) {
+            $gdColor |= (127 - (int) round(max(0, $color[3]) * 127 / 255)) << 24;
+        }
+
+        return $gdColor;
     }
 
     /**
@@ -1071,15 +1248,138 @@ class GD
      */
     protected function drawSpans(array $spans, array $color): void
     {
+        if (isset($color[3]) && $color[3] <= 0) {
+            return;
+        }
         if ($this->dc['clip'] !== null) {
             $spans = Rasterizer::combineSpans($spans, $this->dc['clip'], Rasterizer::RGN_AND);
         }
-        $gdColor = ($color[0] << 16) | ($color[1] << 8) | $color[2];
+        $gdColor = $this->toGDColor($color);
         foreach ($spans as $y => $row) {
             foreach ($row as $span) {
                 imagefilledrectangle($this->canvas, $span[0], $y, $span[1], $y, $gdColor);
             }
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Figures (paths of EMF+ files)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Fills and/or strokes figures with the current brush & pen
+     *
+     * @param array<array{points: array<array<float>>, types: array<int>, closed: bool}> $figures Logical points and their type :
+     *                                                                                            0 (start), 1 (line) or 3 (Bézier control or end point)
+     */
+    public function drawPathFigures(array $figures, bool $fill, bool $stroke): self
+    {
+        $canvasFigures = $this->getCanvasFigures($figures);
+        if ($fill) {
+            $this->fillFigures($canvasFigures);
+        }
+        if ($stroke) {
+            $this->strokeFigures($canvasFigures);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Returns the spans of figures (to define a clipping region)
+     *
+     * @param array<array{points: array<array<float>>, types: array<int>, closed: bool}> $figures See drawPathFigures()
+     *
+     * @return array<int, array<array<int>>>
+     */
+    public function getFiguresSpans(array $figures, bool $nonZero): array
+    {
+        $polygons = [];
+        foreach ($this->getCanvasFigures($figures) as $figure) {
+            $polygons[] = $figure['points'];
+        }
+
+        return $this->rasterize($polygons, $nonZero);
+    }
+
+    /**
+     * Returns the spans covering the whole image
+     *
+     * @return array<int, array<array<int>>>
+     */
+    public function getFullSpans(): array
+    {
+        $spans = [];
+        for ($row = 0; $row < $this->canvasHeight; ++$row) {
+            $spans[$row] = [[0, $this->canvasWidth - 1]];
+        }
+
+        return $spans;
+    }
+
+    /**
+     * Returns the clipping region (spans of the canvas), or null if there is no clipping region
+     *
+     * @return array<int, array<array<int>>>|null
+     */
+    public function getClipSpans(): ?array
+    {
+        return $this->dc['clip'];
+    }
+
+    /**
+     * Defines the clipping region (spans of the canvas, see getClipSpans()), or removes it (null)
+     *
+     * @param array<int, array<array<int>>>|null $spans
+     */
+    public function setClipSpans(?array $spans): self
+    {
+        $this->dc['clip'] = $spans;
+
+        return $this;
+    }
+
+    /**
+     * Converts figures to canvas coordinates, flattening Bézier curves
+     *
+     * @param array<array{points: array<array<float>>, types: array<int>, closed: bool}> $figures
+     *
+     * @return array<array{points: array<array<float>>, closed: bool}>
+     */
+    protected function getCanvasFigures(array $figures): array
+    {
+        $result = [];
+        foreach ($figures as $figure) {
+            $points = $this->toCanvasPoints($figure['points']);
+            $count = count($points);
+            if ($count == 0) {
+                continue;
+            }
+            $flattened = [$points[0]];
+            for ($i = 1; $i < $count; ++$i) {
+                if (($figure['types'][$i] ?? 1) == 3 && $i + 2 < $count) {
+                    $flattened = array_merge($flattened, Rasterizer::flattenBezier($points[$i - 1], $points[$i], $points[$i + 1], $points[$i + 2]));
+                    $i += 2;
+                } else {
+                    $flattened[] = $points[$i];
+                }
+            }
+            $result[] = ['points' => $flattened, 'closed' => $figure['closed']];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Fills the clipping region (or the whole image) with a color
+     *
+     * @param array<int> $color [r, g, b] or [r, g, b, a]
+     */
+    public function clear(array $color): self
+    {
+        $this->drawSpans($this->getFullSpans(), $color);
+
+        return $this;
     }
 
     // ---------------------------------------------------------------------
@@ -1299,27 +1599,11 @@ class GD
             list($x, $y) = $this->dc['position'];
         }
 
-        list($m11, $m12, $m21, $m22) = $this->getMatrix();
-        $scaleX = hypot($m11, $m12);
-        $scaleY = hypot($m21, $m22);
-
-        // Size of the em square, in canvas pixels (a positive height is the height of the cell)
-        $height = $font['height'] == 0 ? -12 : $font['height'];
-        $emSize = ($height < 0 ? -$height : $height * 0.89) * $scaleY;
-        $fontFile = $this->fontResolver->resolve($font);
-        if (!$fontFile || $emSize < 1) {
+        $metrics = $this->getTextMetrics();
+        if ($metrics === null) {
             return $this;
         }
-        // GD renders fonts at 96 DPI
-        $pointSize = $emSize * 72 / 96;
-
-        // Direction of the baseline (canvas coordinates) and its perpendicular, going down
-        // The escapement is counterclockwise in logical space : it is mirrored if the transform flips the y axis
-        $escapement = $font['escapement'] / 10;
-        if ($m11 * $m22 - $m12 * $m21 < 0) {
-            $escapement = -$escapement;
-        }
-        $angle = $escapement + rad2deg(atan2(-$m12, $m11));
+        list($fontFile, $pointSize, $emSize, $angle, $scaleX) = $metrics;
         $ux = cos(deg2rad($angle));
         $uy = -sin(deg2rad($angle));
         $vx = -$uy;
@@ -1401,13 +1685,72 @@ class GD
     }
 
     /**
+     * Returns the metrics of the current font : [font file, point size, em size (canvas pixels), angle (degrees), horizontal scale]
+     *
+     * @return array{0: string, 1: float, 2: float, 3: float, 4: float}|null Null if no font is found or if the text is too small
+     */
+    protected function getTextMetrics(): ?array
+    {
+        $font = $this->dc['font'];
+        list($m11, $m12, $m21, $m22) = $this->getMatrix();
+        $scaleX = hypot($m11, $m12);
+        $scaleY = hypot($m21, $m22);
+
+        // Size of the em square, in canvas pixels (a positive height is the height of the cell)
+        $height = $font['height'] == 0 ? -12 : $font['height'];
+        $emSize = ($height < 0 ? -$height : $height * 0.89) * $scaleY;
+        $fontFile = $this->fontResolver->resolve($font);
+        if (!$fontFile || $emSize < 1) {
+            return null;
+        }
+        // GD renders fonts at 96 DPI
+        $pointSize = $emSize * 72 / 96;
+
+        // Direction of the baseline (canvas coordinates)
+        // The escapement is counterclockwise in logical space : it is mirrored if the transform flips the y axis
+        $escapement = $font['escapement'] / 10;
+        if ($m11 * $m22 - $m12 * $m21 < 0) {
+            $escapement = -$escapement;
+        }
+        $angle = $escapement + rad2deg(atan2(-$m12, $m11));
+
+        return [$fontFile, $pointSize, $emSize, $angle, $scaleX];
+    }
+
+    /**
+     * Draws glyphs with the current font, each one at its position (logical coordinates of the baseline)
+     *
+     * @param array<array{0: string, 1: float, 2: float}> $glyphs UTF-8 character & position
+     */
+    public function glyphsOut(array $glyphs): self
+    {
+        $metrics = $this->getTextMetrics();
+        if ($metrics === null || empty($glyphs)) {
+            return $this;
+        }
+        list($fontFile, $pointSize, , $angle) = $metrics;
+
+        $points = $this->toCanvasPoints(array_map(function (array $glyph): array {
+            return [$glyph[1], $glyph[2]];
+        }, $glyphs));
+        $canvasGlyphs = [];
+        foreach ($glyphs as $key => $glyph) {
+            $canvasGlyphs[] = [$glyph[0], $points[$key][0], $points[$key][1]];
+        }
+        $this->drawGlyphs($canvasGlyphs, $pointSize, $angle, $fontFile, $this->dc['textColor'], $this->dc['clip']);
+
+        return $this;
+    }
+
+    /**
      * @param array<array{0: string, 1: float, 2: float}> $glyphs Text & position (canvas coordinates)
      * @param array<int> $color
      * @param array<int, array<array<int>>>|null $clip
      */
     protected function drawGlyphs(array $glyphs, float $pointSize, float $angle, string $fontFile, array $color, ?array $clip): void
     {
-        $gdColor = ($color[0] << 16) | ($color[1] << 8) | $color[2];
+        $gdColor = $this->toGDColor($color);
+        $alpha = ($color[3] ?? 255) / 255;
         if ($clip === null) {
             foreach ($glyphs as $glyph) {
                 imagettftext($this->canvas, $pointSize, $angle, (int) round($glyph[1]), (int) round($glyph[2]), $gdColor, $fontFile, $this->escapeText($glyph[0]));
@@ -1448,7 +1791,7 @@ class GD
         for ($y = $minY; $y <= $maxY; ++$y) {
             foreach (Rasterizer::combineRow($clip[$y] ?? [], [[$minX, $maxX]], Rasterizer::RGN_AND) as $span) {
                 for ($x = $span[0]; $x <= $span[1]; ++$x) {
-                    $coverage = 1 - (imagecolorat($mask, $x - $minX, $y - $minY) & 0xFF) / 255;
+                    $coverage = (1 - (imagecolorat($mask, $x - $minX, $y - $minY) & 0xFF) / 255) * $alpha;
                     if ($coverage <= 0) {
                         continue;
                     }
@@ -1572,7 +1915,11 @@ class GD
                     $red = (int) max(0, min(255, round($color[0])));
                     $green = (int) max(0, min(255, round($color[1])));
                     $blue = (int) max(0, min(255, round($color[2])));
-                    imagesetpixel($this->canvas, $x, $y, ($red << 16) | ($green << 8) | $blue);
+                    if (!isset($color[3])) {
+                        imagesetpixel($this->canvas, $x, $y, ($red << 16) | ($green << 8) | $blue);
+                    } elseif ($color[3] > 0) {
+                        imagesetpixel($this->canvas, $x, $y, $this->toGDColor([$red, $green, $blue, $color[3]]));
+                    }
                 }
             }
         }
@@ -1581,6 +1928,116 @@ class GD
     // ---------------------------------------------------------------------
     // Bitmaps
     // ---------------------------------------------------------------------
+
+    /**
+     * Draws a (part of a) bitmap in a logical parallelogram
+     *
+     * @param array{width: int, height: int, pixels: array<array<int>>} $bitmap Decoded bitmap (see Bitmap), pixels may have a GD alpha channel
+     * @param array<array<float>> $points Logical points of the upper-left, upper-right & lower-left corners of the destination
+     * @param array<float> $source Source rectangle in the bitmap [x, y, width, height]
+     */
+    public function drawImage(array $bitmap, array $points, array $source): self
+    {
+        if (empty($bitmap['pixels']) || $source[2] == 0 || $source[3] == 0) {
+            return $this;
+        }
+        list($origin, $right, $bottom) = $this->toCanvasPoints($points);
+        // Axes of the parallelogram in the canvas
+        $ux = $right[0] - $origin[0];
+        $uy = $right[1] - $origin[1];
+        $vx = $bottom[0] - $origin[0];
+        $vy = $bottom[1] - $origin[1];
+        $determinant = $ux * $vy - $vx * $uy;
+        if ($determinant == 0) {
+            return $this;
+        }
+
+        if ($uy == 0 && $vx == 0 && $ux > 0 && $vy > 0 && $this->dc['clip'] === null && $this->copyImage($bitmap, $origin, $ux, $vy, $source)) {
+            return $this;
+        }
+
+        $xs = [$origin[0], $right[0], $bottom[0], $right[0] + $vx];
+        $ys = [$origin[1], $right[1], $bottom[1], $right[1] + $vy];
+        $minX = (int) max(0, floor(min($xs)));
+        $maxX = (int) min($this->canvasWidth - 1, ceil(max($xs)));
+        $minY = (int) max(0, floor(min($ys)));
+        $maxY = (int) min($this->canvasHeight - 1, ceil(max($ys)));
+
+        $clip = $this->dc['clip'];
+        for ($y = $minY; $y <= $maxY; ++$y) {
+            $rowSpans = [[$minX, $maxX]];
+            if ($clip !== null) {
+                $rowSpans = Rasterizer::combineRow($rowSpans, $clip[$y] ?? [], Rasterizer::RGN_AND);
+            }
+            foreach ($rowSpans as $span) {
+                for ($x = $span[0]; $x <= $span[1]; ++$x) {
+                    // Coordinates of the pixel center in the parallelogram
+                    $px = $x + 0.5 - $origin[0];
+                    $py = $y + 0.5 - $origin[1];
+                    $u = ($px * $vy - $py * $vx) / $determinant;
+                    $v = ($py * $ux - $px * $uy) / $determinant;
+                    if ($u < 0 || $u >= 1 || $v < 0 || $v >= 1) {
+                        continue;
+                    }
+                    $sourceX = (int) floor($source[0] + $u * $source[2]);
+                    $sourceY = (int) floor($source[1] + $v * $source[3]);
+                    if (isset($bitmap['pixels'][$sourceY][$sourceX])) {
+                        imagesetpixel($this->canvas, $x, $y, $bitmap['pixels'][$sourceY][$sourceX]);
+                    }
+                }
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Copies an opaque bitmap in a rectangle of the canvas (fast path of drawImage())
+     *
+     * @param array{width: int, height: int, pixels: array<array<int>>} $bitmap
+     * @param array<float> $origin Upper-left corner (canvas coordinates)
+     * @param array<float> $source Source rectangle in the bitmap [x, y, width, height]
+     *
+     * @return bool False if the bitmap is not opaque or if the source rectangle is not in the bitmap
+     */
+    protected function copyImage(array $bitmap, array $origin, float $width, float $height, array $source): bool
+    {
+        list($sourceX, $sourceY, $sourceWidth, $sourceHeight) = $source;
+        if ($sourceX != (int) $sourceX || $sourceY != (int) $sourceY || $sourceWidth != (int) $sourceWidth || $sourceHeight != (int) $sourceHeight
+            || $sourceX < 0 || $sourceY < 0 || $sourceX + $sourceWidth > $bitmap['width'] || $sourceY + $sourceHeight > $bitmap['height']) {
+            return false;
+        }
+
+        $image = imagecreatetruecolor($bitmap['width'], $bitmap['height']);
+        foreach ($bitmap['pixels'] as $y => $line) {
+            foreach ($line as $x => $pixel) {
+                // Pixels with an alpha channel are drawn pixel by pixel
+                if ($pixel & 0x7F000000) {
+                    return false;
+                }
+                imagesetpixel($image, $x, $y, $pixel);
+            }
+        }
+        $left = (int) round($origin[0]);
+        $top = (int) round($origin[1]);
+        imagecopyresized(
+            $this->canvas,
+            $image,
+            $left,
+            $top,
+            (int) $sourceX,
+            (int) $sourceY,
+            (int) round($origin[0] + $width) - $left,
+            (int) round($origin[1] + $height) - $top,
+            (int) $sourceWidth,
+            (int) $sourceHeight
+        );
+        if (\PHP_VERSION_ID < 80000) {
+            imagedestroy($image);
+        }
+
+        return true;
+    }
 
     /**
      * Draws a (part of a) bitmap in a logical rectangle

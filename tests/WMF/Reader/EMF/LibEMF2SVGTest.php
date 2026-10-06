@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\PhpOffice\WMF\Reader\EMF;
 
 use PhpOffice\WMF\Exception\WMFException;
+use PhpOffice\WMF\Reader\Detector;
 use PhpOffice\WMF\Reader\EMF\GD;
 use Tests\PhpOffice\WMF\Reader\AbstractTestReader;
 
@@ -60,6 +61,8 @@ class LibEMF2SVGTest extends AbstractTestReader
         $reader = new GD();
         $this->assertTrue($reader->load($file));
         $this->assertTrue($reader->isEMF());
+        // EMF+ files are drawn with their EMF+ records
+        $this->assertEquals(Detector::detectFile($file) == Detector::TYPE_EMFPLUS, $reader->isEMFPlusRendered());
         $this->assertTrue($reader->save($outputFile, 'png'));
         $this->assertMimeType($outputFile, 'image/png');
 
