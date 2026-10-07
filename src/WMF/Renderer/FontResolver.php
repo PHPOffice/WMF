@@ -41,6 +41,8 @@ class FontResolver
         'garamond' => 'serif',
         'georgia' => 'serif',
         'msserif' => 'serif',
+        // The texts of the Symbol font are converted to Unicode (see Encoding::decodeSymbol())
+        'symbol' => 'serif',
         'times' => 'serif',
         'timesnewroman' => 'serif',
         'consolas' => 'mono',
@@ -141,7 +143,8 @@ class FontResolver
                 $family = 'mono';
             }
         }
-        $names = array_unique(array_merge([$face], self::FONT_FAMILIES[$family]));
+        // The Symbol font itself is not used : its characters are not Unicode characters
+        $names = array_unique(array_merge($face == 'symbol' ? [] : [$face], self::FONT_FAMILIES[$family]));
 
         $isBold = $font['weight'] >= 600;
         $styles = ['regular'];

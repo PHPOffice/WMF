@@ -10,6 +10,7 @@ use PhpOffice\WMF\Reader\EMF\GD as EMFReader;
 use PhpOffice\WMF\Reader\WMF\GD as WMFReader;
 use PhpOffice\WMF\Renderer\Bitmap;
 use PhpOffice\WMF\Renderer\Encoding;
+use PhpOffice\WMF\Renderer\GD as Renderer;
 
 /**
  * Decodes the objects of EMF+ files (brushes, pens, paths, regions, images, fonts & string formats)
@@ -43,25 +44,6 @@ class ObjectReader
     public const REGION_PATH = 0x10000001;
     public const REGION_EMPTY = 0x10000002;
     public const REGION_INFINITE = 0x10000003;
-
-    /**
-     * Ordered dither matrix (8x8) for the percent hatch styles
-     */
-    protected const BAYER = [
-        [0, 32, 8, 40, 2, 34, 10, 42],
-        [48, 16, 56, 24, 50, 18, 58, 26],
-        [12, 44, 4, 36, 14, 46, 6, 38],
-        [60, 28, 52, 20, 62, 30, 54, 22],
-        [3, 35, 11, 43, 1, 33, 9, 41],
-        [51, 19, 59, 27, 49, 17, 57, 25],
-        [15, 47, 7, 39, 13, 45, 5, 37],
-        [63, 31, 55, 23, 61, 29, 53, 21],
-    ];
-
-    /**
-     * Densities of the percent hatch styles (HatchStyle05Percent to HatchStyle90Percent)
-     */
-    protected const HATCH_PERCENTS = [6 => 5, 7 => 10, 8 => 20, 9 => 25, 10 => 30, 11 => 40, 12 => 50, 13 => 60, 14 => 70, 15 => 75, 16 => 80, 17 => 90];
 
     /**
      * Decodes an object
@@ -146,35 +128,13 @@ class ObjectReader
         $foreColor = $buffer->readColor();
         $backColor = $buffer->readColor();
 
-        $isForeground = function (int $x, int $y) use ($style): bool {
-            switch ($style) {
-                case 0: // Horizontal
-                    return $y % 8 == 0;
-                case 1: // Vertical
-                    return $x % 8 == 0;
-                case 2: // ForwardDiagonal
-                    return ($x - $y) % 8 == 0;
-                case 3: // BackwardDiagonal
-                    return ($x + $y) % 8 == 0;
-                case 4: // Cross
-                    return $x % 8 == 0 || $y % 8 == 0;
-                case 5: // DiagonalCross
-                    return ($x - $y) % 8 == 0 || ($x + $y) % 8 == 0;
-                default:
-                    // Percent styles use a dither, other styles are approximated by a 50% pattern
-                    $percent = self::HATCH_PERCENTS[$style] ?? 50;
-
-                    return self::BAYER[$y % 8][$x % 8] < $percent * 64 / 100;
-            }
-        };
-
         return [
             'type' => 'brush',
             'style' => 0,
             'color' => self::mixColors($foreColor, $backColor, 0.5),
             'space' => 'device',
-            'shader' => function (float $x, float $y) use ($isForeground, $foreColor, $backColor): array {
-                return $isForeground(abs((int) floor($x)), abs((int) floor($y))) ? $foreColor : $backColor;
+            'shader' => function (float $x, float $y) use ($style, $foreColor, $backColor): array {
+                return Renderer::isHatchForeground($style, (int) floor($x), (int) floor($y)) ? $foreColor : $backColor;
             },
         ];
     }
@@ -279,6 +239,9 @@ class ObjectReader
         $surroundingColor = $surroundingColors[0] ?? $centerColor;
         // From the boundary (0) to the center (1)
         $blend = $this->readBlend($buffer, $flags, $surroundingColor, $centerColor);
+        // Several surrounding colors (without preset colors) : the color of the boundary is interpolated between its points
+        $countColors = count($surroundingColors);
+        $isMultiColor = !($flags & 0x04) && $countColors > 1;
 
         $inverse = self::invertMatrix($transform);
         $count = count($boundary);
@@ -287,7 +250,7 @@ class ObjectReader
             'type' => 'brush',
             'style' => 0,
             'color' => self::mixColors($centerColor, $surroundingColor, 0.5),
-            'shader' => function (float $x, float $y) use ($inverse, $centerX, $centerY, $boundary, $count, $blend): array {
+            'shader' => function (float $x, float $y) use ($inverse, $centerX, $centerY, $boundary, $count, $blend, $isMultiColor, $surroundingColors, $countColors): array {
                 list($x, $y) = self::transformPoint($inverse, $x, $y);
                 $dx = $x - $centerX;
                 $dy = $y - $centerY;
@@ -296,6 +259,8 @@ class ObjectReader
                 }
                 // Intersection of the ray from the center through the point with the boundary
                 $nearest = null;
+                $nearestEdge = 0;
+                $nearestRatio = 0.0;
                 for ($i = 0; $i < $count; ++$i) {
                     list($ax, $ay) = $boundary[$i];
                     list($bx, $by) = $boundary[($i + 1) % $count];
@@ -309,11 +274,22 @@ class ObjectReader
                     $r = (($ax - $centerX) * $dy - ($ay - $centerY) * $dx) / $denominator;
                     if ($s > 0 && $r >= 0 && $r <= 1 && ($nearest === null || $s < $nearest)) {
                         $nearest = $s;
+                        $nearestEdge = $i;
+                        $nearestRatio = $r;
                     }
                 }
                 $position = $nearest === null ? 0.0 : max(0.0, 1 - 1 / $nearest);
+                if (!$isMultiColor) {
+                    return $blend($position);
+                }
+                // Color of the boundary (the last color is used for the points without color)
+                $edgeColor = self::mixColors(
+                    $surroundingColors[min($nearestEdge, $countColors - 1)],
+                    $surroundingColors[min(($nearestEdge + 1) % $count, $countColors - 1)],
+                    $nearestRatio
+                );
 
-                return $blend($position);
+                return $blend($position, $edgeColor);
             },
         ];
     }
@@ -324,7 +300,7 @@ class ObjectReader
      * @param array<int> $startColor
      * @param array<int> $endColor
      *
-     * @return callable(float): array<int>
+     * @return callable(float, array<int>|null=): array<int> Color for a position (the start color may be overridden, except for preset colors)
      */
     protected function readBlend(Buffer $buffer, int $flags, array $startColor, array $endColor): callable
     {
@@ -340,7 +316,7 @@ class ObjectReader
                 $colors[] = $buffer->readColor();
             }
 
-            return function (float $position) use ($positions, $colors, $count): array {
+            return function (float $position, ?array $start = null) use ($positions, $colors, $count): array {
                 for ($i = 0; $i + 1 < $count; ++$i) {
                     if ($position <= $positions[$i + 1]) {
                         $range = $positions[$i + 1] - $positions[$i];
@@ -368,7 +344,7 @@ class ObjectReader
         }
         $count = count($positions);
 
-        return function (float $position) use ($positions, $factors, $count, $startColor, $endColor): array {
+        return function (float $position, ?array $start = null) use ($positions, $factors, $count, $startColor, $endColor): array {
             $factor = $factors[$count - 1] ?? 1.0;
             for ($i = 0; $i + 1 < $count; ++$i) {
                 if ($position <= $positions[$i + 1]) {
@@ -378,7 +354,7 @@ class ObjectReader
                 }
             }
 
-            return self::mixColors($startColor, $endColor, $factor);
+            return self::mixColors($start ?? $startColor, $endColor, $factor);
         };
     }
 
@@ -477,8 +453,16 @@ class ObjectReader
             $buffer->skip(4);
         }
         if ($flags & 0x0400) {
-            // Compound lines are drawn as a single line
-            $buffer->skip(4 * $buffer->readUInt32());
+            // Compound lines : pairs of positions in the width of the pen
+            $count = $buffer->readUInt32();
+            $compound = [];
+            for ($i = 0; $i < $count; ++$i) {
+                $compound[] = $buffer->readFloat();
+            }
+            // A single line on the whole width is a simple line
+            if ($compound != [0.0, 1.0]) {
+                $pen['compound'] = $compound;
+            }
         }
         if ($flags & 0x0800) {
             $this->readCustomLineCap($pen, 'start', new Buffer($buffer->read($buffer->readUInt32())));
@@ -795,14 +779,14 @@ class ObjectReader
         $type = Detector::detect($data);
         if ($type == Detector::TYPE_EMF || $type == Detector::TYPE_EMFPLUS) {
             $reader = new EMFReader();
-        } elseif ($type == Detector::TYPE_WMF && Detector::isPlaceableWMF($data)) {
+        } elseif ($type == Detector::TYPE_WMF) {
             $reader = new WMFReader();
         } else {
-            // Standard WMF files (without placeable header) are not supported
             return ['width' => 0, 'height' => 0, 'pixels' => []];
         }
-        // A metafile which can not be read is not drawn
+        // A metafile which can not be read is not drawn, its background is transparent
         $reader->enableExceptions(false);
+        $reader->setBackgroundColor(null);
         if (!$reader->loadFromString($data)) {
             return ['width' => 0, 'height' => 0, 'pixels' => []];
         }

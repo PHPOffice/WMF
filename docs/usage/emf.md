@@ -74,39 +74,38 @@ The image is generated at 96 DPI, based on the frame of the EMF file (big images
 It supports :
 
 - paths & shapes (polygons, polylines, Bézier curves, rectangles, rounded rectangles, ellipses, arcs, chords, pies)
-- pens (width, end caps, joins) & brushes (solid, pattern brushes are approximated by their average color)
+- pens (width, end caps, joins, dashes) & brushes (solid, hatched, pattern brushes)
 - world & page transforms (map modes, window, viewport)
 - clipping (paths, rectangles, regions)
 - bitmaps (`EMR_STRETCHDIBITS`, `EMR_BITBLT`, `EMR_STRETCHBLT`, including JPEG & PNG bitmaps) & gradients (`EMR_GRADIENTFILL`)
 - texts (`EMR_EXTTEXTOUTW`, `EMR_EXTTEXTOUTA`, `EMR_SMALLTEXTOUT`), with TrueType/OpenType fonts
 
 If a not supported record is found (like `EMR_ALPHABLEND`, `EMR_MASKBLT`, `EMR_PLGBLT`, `EMR_TRANSPARENTBLT`, `EMR_POLYDRAW` or `EMR_EXTFLOODFILL`),
-or a bitmap which is not supported (like compressed bitmaps, `BI_RLE4` & `BI_RLE8`),
+or a bitmap which is not supported (like CMYK bitmaps, `BI_CMYK`),
 an exception is thrown (or `load` returns `false`, if exceptions are disabled).
 Corrupted files throw an exception too.
 
 ### Known limitations
 
-- The background of the image is white : the image is never transparent.
+- The background of the image is white by default (see [`setBackgroundColor`](#setbackgroundcolor)).
 - The content outside of the frame of the file is clipped.
 - For the limitations of EMF+ files, see [EMF+ > Known limitations](#known-limitations-of-emf).
 - Pens :
-    - dashed pens are drawn as solid lines,
-    - pens have a minimal width of one pixel.
+    - pens have a minimal width of one pixel,
+    - the dashes of geometric pens are proportional to their width, and dashes have flat caps.
 - Brushes :
-    - hatched brushes are drawn as solid brushes,
-    - pattern brushes are drawn with the average color of their pattern.
+    - the patterns of pattern brushes are aligned on the origin of the image (the brush origin is ignored).
 - Bitmaps :
-    - compressed bitmaps (`BI_RLE4` & `BI_RLE8`) are not supported : an exception is thrown,
+    - CMYK bitmaps (`BI_CMYK`, `BI_CMYKRLE4` & `BI_CMYKRLE8`) are not supported : an exception is thrown,
+    - the pixels skipped by compressed bitmaps (`BI_RLE4` & `BI_RLE8`) are transparent,
     - bitmaps using the palette of the file (`DIB_PAL_COLORS`) are drawn with a gray scale (the palette is not supported),
-    - raster operations are not supported : bitmaps are copied (`SRCCOPY`), and rectangles without bitmap are only drawn
-      for `PATCOPY`, `BLACKNESS` & `WHITENESS`,
+    - raster operations are applied on the image : a transparent background is used as a white background,
     - corrupted JPEG & PNG bitmaps are not drawn.
 - Texts :
     - texts are not drawn if no font is found (see [Fonts](#fonts)),
     - the metrics of fonts are approximated (ascent, descent), the width & the orientation of fonts are ignored,
-    - the vertical advances of characters (`ETO_PDY`) are ignored,
-    - the charset is ignored : symbol fonts (like `Symbol` or `Wingdings`) are drawn with another font.
+    - the characters of the `Symbol` font are converted to Unicode (Greek letters, mathematical symbols...),
+      other symbol fonts (like `Wingdings`) are drawn with another font.
 - `EMR_SETROP2`, `EMR_SETSTRETCHBLTMODE` & palettes are ignored.
 
 ### Fonts
@@ -150,7 +149,7 @@ It supports :
   hatches, textures, linear & path gradients)
 - world & page transforms (units : pixel, point, inch, document, millimeter), containers & saved states
 - clipping (rectangles, paths, regions)
-- images : bitmaps (all pixel formats, PNG, JPEG, GIF...) & metafiles (placeable WMF, EMF & EMF+), drawn in parallelograms
+- images : bitmaps (all pixel formats, PNG, JPEG, GIF...) & metafiles (WMF, EMF & EMF+), drawn in parallelograms
 - texts (`EmfPlusDrawString` & `EmfPlusDrawDriverString`)
 
 ### Methods for EMF+
@@ -175,15 +174,15 @@ var_dump($reader->isEMFPlusRendered());
 - Rendering hints (antialiasing, interpolation, compositing...) are ignored : the drawing is always antialiased.
 - Image attributes (color adjustments, wrap modes of images) & image effects (`EmfPlusSerializableObject`) are ignored.
 - Pens :
-    - compound lines are drawn as a single line, the transform & the alignment of pens are ignored,
+    - the transform & the alignment of pens are ignored, the lines of compound pens have mitered joins,
     - custom caps are drawn as filled shapes, triangle & diamond caps are drawn as flat caps.
 - Brushes :
     - hatch styles other than horizontal, vertical, diagonal, cross & percent styles are drawn with a pattern of 50%,
-    - the focus scales & the surrounding colors (except the first one) of path gradients are ignored,
+    - the focus scales of path gradients are ignored, and their surrounding colors are interpolated along the boundary (without preset colors),
     - the vertical blend of linear gradients is ignored.
-- Images : the source rectangle of metafiles is ignored (the whole metafile is drawn), and WMF files without placeable header are not drawn.
+- Images : the source rectangle of metafiles is ignored (the whole metafile is drawn).
 - Texts :
-    - texts are not wrapped, and the flags of string formats (direction, trimming, tabs...) are ignored,
+    - texts are wrapped at spaces, and the flags of string formats (except `NoWrap` & `NoClip`) are ignored (direction, trimming, tabs...),
     - `EmfPlusDrawDriverString` with indexes of glyphs (instead of characters) is not supported.
 - `EmfPlusStrokeFillPath`, the multi-format records & the records of terminal services are ignored.
 
@@ -221,6 +220,25 @@ $reader = new Magic();
 $mediaType = $reader->getMediaType();
 
 echo 'The media type for a EMF file is ' . $mediaType;
+```
+
+### `setBackgroundColor`
+
+The method defines the color of the background (white by default), or a transparent background (`null`).
+The background must be defined before loading the file.
+Formats without alpha channel (`gif`, `jpg` & `wbmp`) are saved with a white background.
+
+```php
+<?php
+
+use PhpOffice\WMF\Reader\EMF\GD;
+
+$reader = new GD();
+// Transparent background
+$reader->setBackgroundColor(null);
+// Blue background
+$reader->setBackgroundColor([0, 0, 255]);
+$reader->load('sample.emf');
 ```
 
 ### `isEMF`

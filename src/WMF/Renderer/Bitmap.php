@@ -20,6 +20,10 @@ class Bitmap
      * Usage of the color table of a bitmap : it contains indexes in the palette of the file (else, it contains colors)
      */
     public const DIB_PAL_COLORS = 1;
+    /**
+     * Transparent pixel (alpha channel of GD)
+     */
+    public const TRANSPARENT = 0x7F000000;
 
     /**
      * Decodes a device independent bitmap (DIB)
@@ -56,8 +60,9 @@ class Bitmap
         $width = $header['width'];
         $height = abs($header['height']);
         $bitCount = $header['bitCount'];
-        // Only uncompressed bitmaps (BI_RGB & BI_BITFIELDS) are supported
-        if (!in_array($header['compression'], [0, 3]) || !in_array($bitCount, [1, 4, 8, 16, 24, 32])) {
+        // BI_RLE8 & BI_RLE4 are only valid for 8 & 4 bits per pixel
+        $isRLE = ($header['compression'] == 1 && $bitCount == 8) || ($header['compression'] == 2 && $bitCount == 4);
+        if ((!$isRLE && !in_array($header['compression'], [0, 3])) || !in_array($bitCount, [1, 4, 8, 16, 24, 32])) {
             return null;
         }
 
@@ -77,6 +82,22 @@ class Bitmap
                     $palette[$i] = ($red << 16) | ($green << 8) | $blue;
                 }
             }
+        }
+
+        if ($isRLE) {
+            // Compressed bitmaps are always bottom-up
+            $rows = self::readRLE((string) substr($data, $offBits, $cbBits ?: strlen($data)), $width, $height, $bitCount == 4);
+            $pixels = [];
+            for ($row = $height - 1; $row >= 0; --$row) {
+                $line = [];
+                foreach ($rows[$row] as $index) {
+                    // Skipped pixels are transparent
+                    $line[] = $index < 0 ? self::TRANSPARENT : ($palette[$index] ?? 0);
+                }
+                $pixels[] = $line;
+            }
+
+            return ['width' => $width, 'height' => $height, 'pixels' => $pixels];
         }
 
         $stride = (($width * $bitCount + 31) >> 5) << 2;
@@ -199,6 +220,57 @@ class Bitmap
         $count = max(1, $bitmap['width'] * $bitmap['height']);
 
         return [(int) round($red / $count), (int) round($green / $count), (int) round($blue / $count)];
+    }
+
+    /**
+     * Decodes the bits of a BI_RLE8 or BI_RLE4 bitmap : returns the palette indexes, from the bottom row (-1 for skipped pixels)
+     *
+     * @return array<array<int>>
+     */
+    protected static function readRLE(string $data, int $width, int $height, bool $isRLE4): array
+    {
+        $rows = array_fill(0, $height, array_fill(0, $width, -1));
+        $bytes = array_values(unpack('C*', $data ?: "\0"));
+        $length = count($bytes);
+        $x = $y = 0;
+        $position = 0;
+        while ($position + 1 < $length && $y < $height) {
+            $first = $bytes[$position];
+            $second = $bytes[$position + 1];
+            $position += 2;
+            if ($first > 0) {
+                // Encoded mode : $first pixels of the same index (or of two alternating indexes for RLE4)
+                for ($i = 0; $i < $first; ++$i, ++$x) {
+                    if ($x < $width) {
+                        $rows[$y][$x] = $isRLE4 ? ($i & 1 ? $second & 0x0F : $second >> 4) : $second;
+                    }
+                }
+            } elseif ($second == 0) {
+                // End of line
+                $x = 0;
+                ++$y;
+            } elseif ($second == 1) {
+                // End of bitmap
+                break;
+            } elseif ($second == 2) {
+                // Delta : moves the current position
+                $x += $bytes[$position] ?? 0;
+                $y += $bytes[$position + 1] ?? 0;
+                $position += 2;
+            } else {
+                // Absolute mode : $second indexes, padded to a word
+                $size = $isRLE4 ? ($second + 1) >> 1 : $second;
+                for ($i = 0; $i < $second; ++$i, ++$x) {
+                    $byte = $bytes[$position + ($isRLE4 ? $i >> 1 : $i)] ?? 0;
+                    if ($x < $width) {
+                        $rows[$y][$x] = $isRLE4 ? ($i & 1 ? $byte & 0x0F : $byte >> 4) : $byte;
+                    }
+                }
+                $position += $size + ($size & 1);
+            }
+        }
+
+        return $rows;
     }
 
     /**

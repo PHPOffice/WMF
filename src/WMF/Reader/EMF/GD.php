@@ -345,7 +345,7 @@ class GD extends ReaderAbstract
 
         $this->destroyImage($this->gd);
         $this->gd = false;
-        $this->renderer = new Renderer($width, $height, $deviceWidth, $deviceHeight, $originX, $originY, $this->fontResolver);
+        $this->renderer = new Renderer($width, $height, $deviceWidth, $deviceHeight, $originX, $originY, $this->fontResolver, $this->backgroundColor);
         $this->renderer->setPixelsPerMm($pixelsPerMmX, $pixelsPerMmY);
     }
 
@@ -419,29 +419,40 @@ class GD extends ReaderAbstract
                     'width' => $pen['width'],
                     'geometric' => true,
                     'color' => [$pen['r'], $pen['g'], $pen['b']],
+                    // Dashes are drawn only for pens of one pixel
+                    'dashes' => $pen['width'] <= 1 ? Renderer::getPenDashes($pen['style'], true, $pen['width']) : null,
                 ];
                 break;
             case self::EMR_EXTCREATEPEN:
                 $pen = unpack('Vih/VoffBmi/VcbBmi/VoffBits/VcbBits/Vstyle/Vwidth/VbrushStyle/Cr/Cg/Cb', (string) substr($record, 8, 35));
+                $isGeometric = ($pen['style'] & 0x00010000) > 0;
+                // PS_USERSTYLE : lengths of dashes & spaces
+                $userStyle = [];
+                if (($pen['style'] & 0x0F) == 7 && strlen($record) >= 52) {
+                    $count = min($this->readUInt($record, 48), intdiv(strlen($record) - 52, 4));
+                    $userStyle = $count > 0 ? array_values(unpack('V' . $count, (string) substr($record, 52, 4 * $count))) : [];
+                }
                 $this->objects[$pen['ih']] = [
                     'type' => 'pen',
                     'style' => $pen['brushStyle'] == 1 ? 5 : $pen['style'],
                     'width' => $pen['width'],
-                    'geometric' => ($pen['style'] & 0x00010000) > 0,
+                    'geometric' => $isGeometric,
                     'color' => [$pen['r'], $pen['g'], $pen['b']],
+                    'dashes' => Renderer::getPenDashes($pen['style'], !$isGeometric, $pen['width'], $userStyle),
                 ];
                 break;
             case self::EMR_CREATEBRUSHINDIRECT:
-                $brush = unpack('Vih/Vstyle/Cr/Cg/Cb', (string) substr($record, 8, 11));
+                $brush = unpack('Vih/Vstyle/Cr/Cg/Cb/x/Vhatch', (string) substr($record, 8, 16));
                 $this->objects[$brush['ih']] = [
                     'type' => 'brush',
                     'style' => $brush['style'],
                     'color' => [$brush['r'], $brush['g'], $brush['b']],
+                    'hatch' => $brush['hatch'],
                 ];
                 break;
             case self::EMR_CREATEMONOBRUSH:
             case self::EMR_CREATEDIBPATTERNBRUSHPT:
-                // Pattern brushes are approximated by the average color of the pattern
+                // The pattern is tiled (its average color is used when a color is needed)
                 $brush = unpack('Vih/Vusage/VoffBmi/VcbBmi/VoffBits/VcbBits', (string) substr($record, 8, 24));
                 $bitmap = $this->requireBitmap(
                     Bitmap::readDIB($record, $brush['offBmi'], $brush['offBits'], $brush['cbBmi'], $brush['cbBits'], $brush['usage'] == Bitmap::DIB_PAL_COLORS),
@@ -449,8 +460,9 @@ class GD extends ReaderAbstract
                 );
                 $this->objects[$brush['ih']] = [
                     'type' => 'brush',
-                    'style' => 0,
+                    'style' => 3,
                     'color' => Bitmap::getAverageColor($bitmap),
+                    'pattern' => $bitmap,
                 ];
                 break;
             case self::EMR_EXTCREATEFONTINDIRECTW:
@@ -631,7 +643,7 @@ class GD extends ReaderAbstract
                     Bitmap::readDIB($record, $data['offBmi'], $data['offBits'], $data['cbBmi'], $data['cbBits'], $data['usage'] == Bitmap::DIB_PAL_COLORS),
                     $recordType
                 );
-                $renderer->drawBitmap($bitmap, $data['xDest'], $data['yDest'], $data['cxDest'], $data['cyDest'], $data['xSrc'], $data['ySrc'], $data['cxSrc'], $data['cySrc']);
+                $renderer->drawBitmap($bitmap, $data['xDest'], $data['yDest'], $data['cxDest'], $data['cyDest'], $data['xSrc'], $data['ySrc'], $data['cxSrc'], $data['cySrc'], $data['rop']);
                 break;
             case self::EMR_GRADIENTFILL:
                 $this->readGradientFill($record);
@@ -656,7 +668,7 @@ class GD extends ReaderAbstract
                 if ($recordType == self::EMR_STRETCHBLT) {
                     list($cxSrc, $cySrc) = $this->readInts($record, 100, 2);
                 }
-                $renderer->drawBitmap($bitmap, $data['xDest'], $data['yDest'], $data['cxDest'], $data['cyDest'], $data['xSrc'], $data['ySrc'], $cxSrc, $cySrc);
+                $renderer->drawBitmap($bitmap, $data['xDest'], $data['yDest'], $data['cxDest'], $data['cyDest'], $data['xSrc'], $data['ySrc'], $cxSrc, $cySrc, $data['rop']);
                 break;
             default:
                 return false;
@@ -724,16 +736,19 @@ class GD extends ReaderAbstract
         }
 
         // Advances of each character (ETO_PDY : pairs of horizontal & vertical advances)
-        $dx = [];
+        $dx = $dy = [];
         if ($count > 0 && $data['offDx'] > 0) {
             $step = ($data['options'] & 0x2000) ? 2 : 1;
             $values = array_values(unpack('l' . ($count * $step), (string) substr($record, $data['offDx'], 4 * $count * $step)));
             for ($i = 0; $i < $count; ++$i) {
                 $dx[] = $values[$i * $step];
+                if ($step == 2) {
+                    $dy[] = $values[$i * $step + 1];
+                }
             }
         }
 
-        $this->renderer->textOut($data['x'], $data['y'], $text, $dx, $data['options'], [$data['left'], $data['top'], $data['right'], $data['bottom']]);
+        $this->renderer->textOut($data['x'], $data['y'], $text, $dx, $data['options'], [$data['left'], $data['top'], $data['right'], $data['bottom']], $dy);
     }
 
     protected function readGradientFill(string $record): void

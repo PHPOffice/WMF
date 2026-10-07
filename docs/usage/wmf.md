@@ -64,45 +64,47 @@ var_dump($reader->getBackends());
 ## GD backend
 
 The `GD` backend is a renderer written in pure PHP, shared with the EMF reader (`PhpOffice\WMF\Renderer\GD`).
-Only placeable WMF files are supported : the image is generated at 72 DPI, based on the bounding box of the placeable header.
-The window of the file (`META_SETWINDOWORG` & `META_SETWINDOWEXT`) is mapped to the image : the map mode and the viewport are ignored.
+The image is generated at 72 DPI, based on the bounding box of the placeable header.
+For WMF files without placeable header, the bounding box is the first window of the file (`META_SETWINDOWORG` & `META_SETWINDOWEXT`),
+and the number of logical units per inch depends on the map mode (`META_SETMAPMODE`) : 1440 for `MM_ANISOTROPIC` & `MM_ISOTROPIC`.
+The window of the file is mapped to the image : the map mode and the viewport are ignored.
 
 It supports :
 
 - shapes (polygons, polylines, rectangles, rounded rectangles, ellipses, arcs, chords, pies)
-- pens (width, end caps, joins) & brushes (solid, pattern brushes are approximated by their average color)
+- pens (width, end caps, joins, dashes) & brushes (solid, hatched, pattern brushes)
 - regions & clipping
 - bitmaps (`META_STRETCHDIB`, `META_DIBBITBLT`, `META_DIBSTRETCHBLT`, `META_BITBLT`, `META_STRETCHBLT`, `META_SETDIBTODEV`) & flood fills
 - texts (`META_TEXTOUT`, `META_EXTTEXTOUT`), with TrueType/OpenType fonts
 
-If a not supported record is found (like `META_DRAWTEXT`), or a bitmap which is not supported (like compressed bitmaps, `BI_RLE4` & `BI_RLE8`),
+If a not supported record is found (like `META_DRAWTEXT`), or a bitmap which is not supported (like CMYK bitmaps, `BI_CMYK`),
 an exception is thrown (or `load` returns `false`, if exceptions are disabled).
 Corrupted files throw an exception too.
 
 ### Known limitations
 
-- Only placeable WMF files are supported.
-- The background of the image is white : the image is never transparent.
+- WMF files without placeable header must define a window (`META_SETWINDOWEXT`) : else, an exception is thrown.
+- The background of the image is white by default (see [`setBackgroundColor`](#setbackgroundcolor)).
 - The map mode & the viewport (`META_SETMAPMODE`, `META_SETVIEWPORTORG`, `META_SETVIEWPORTEXT`...) are ignored.
 - Pens :
-    - dashed pens are drawn as solid lines,
-    - pens have a minimal width of one pixel.
+    - pens have a minimal width of one pixel, and dashes have flat caps.
 - Brushes :
-    - hatched brushes are drawn as solid brushes,
-    - pattern brushes are drawn with the average color of their pattern.
-- Regions : `META_INVERTREGION` is ignored, and `META_FRAMEREGION` draws the frame of each rectangle of the region.
+    - the patterns of pattern brushes are aligned on the origin of the image (the brush origin is ignored).
+- Regions : `META_FRAMEREGION` draws the frame of each rectangle of the region.
 - Bitmaps :
-    - compressed bitmaps (`BI_RLE4` & `BI_RLE8`) are not supported : an exception is thrown,
+    - CMYK bitmaps (`BI_CMYK`, `BI_CMYKRLE4` & `BI_CMYKRLE8`) are not supported : an exception is thrown,
+    - the pixels skipped by compressed bitmaps (`BI_RLE4` & `BI_RLE8`) are transparent,
     - bitmaps using the palette of the file (`DIB_PAL_COLORS`) and indexed device dependent bitmaps (`Bitmap16`) are drawn with a gray scale,
       and monochrome `Bitmap16` are drawn in black & white,
-    - raster operations are not supported : bitmaps are copied (`SRCCOPY`), and rectangles without bitmap are only drawn
-      for `PATCOPY`, `BLACKNESS` & `WHITENESS`,
+    - raster operations are applied on the image : a transparent background is used as a white background,
     - corrupted JPEG & PNG bitmaps are not drawn.
 - Flood fills (`META_FLOODFILL` & `META_EXTFLOODFILL`) ignore the clipping region.
 - Texts :
     - texts are not drawn if no font is found (see [Fonts](#fonts)),
     - the metrics of fonts are approximated (ascent, descent), the width & the orientation of fonts are ignored,
-    - the charset is ignored : texts are decoded as Windows-1252, and symbol fonts (like `Symbol` or `Wingdings`) are drawn with another font.
+    - the charset is ignored : texts are decoded as Windows-1252,
+    - the characters of the `Symbol` font are converted to Unicode (Greek letters, mathematical symbols...),
+      other symbol fonts (like `Wingdings`) are drawn with another font.
 - `META_SETROP2`, `META_SETSTRETCHBLTMODE`, `META_ESCAPE` & palettes are ignored.
 
 ### Fonts
@@ -158,6 +160,25 @@ $reader = new Magic();
 $mediaType = $reader->getMediaType();
 
 echo 'The media type for a WMF file is ' . $$mediaType;
+```
+
+### `setBackgroundColor`
+
+The method defines the color of the background (white by default), or a transparent background (`null`).
+The background must be defined before loading the file.
+Formats without alpha channel (`gif`, `jpg` & `wbmp`) are saved with a white background.
+
+```php
+<?php
+
+use PhpOffice\WMF\Reader\WMF\GD;
+
+$reader = new GD();
+// Transparent background
+$reader->setBackgroundColor(null);
+// Blue background
+$reader->setBackgroundColor([0, 0, 255]);
+$reader->load('sample.wmf');
 ```
 
 ### `isWMF`

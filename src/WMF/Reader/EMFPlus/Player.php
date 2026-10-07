@@ -910,30 +910,67 @@ class Player
         list($x, $y, $width, $height) = $data->readRect();
         $text = Encoding::decodeUTF16($data->readString($length));
         $format = $this->objects[$formatId] ?? null;
-        $alignment = $format && $format['type'] == 'stringFormat' ? $format['alignment'] : 0;
-        $lineAlignment = $format && $format['type'] == 'stringFormat' ? $format['lineAlignment'] : 0;
+        $isFormat = $format && $format['type'] == 'stringFormat';
+        $alignment = $isFormat ? $format['alignment'] : 0;
+        $lineAlignment = $isFormat ? $format['lineAlignment'] : 0;
+        $formatFlags = $isFormat ? $format['flags'] : 0;
 
-        // Lines are not wrapped
-        $lines = explode("\n", str_replace("\r\n", "\n", $text));
-        $lineHeight = -$font['height'] * 1.15;
-        $totalHeight = count($lines) * $lineHeight;
-        if ($lineAlignment == 1 && $height > 0) {
-            $y += ($height - $totalHeight) / 2;
-        } elseif ($lineAlignment == 2 && $height > 0) {
-            $y += $height - $totalHeight;
-        }
-        // StringAlignmentNear (left), StringAlignmentCenter, StringAlignmentFar (right)
-        $textAlign = [0 => 0, 1 => 6, 2 => 2][$alignment] ?? 0;
-        if ($width > 0) {
-            $x += [0 => 0, 1 => $width / 2, 2 => $width][$alignment] ?? 0;
-        }
+        $this->draw(function () use ($font, $brush, $text, $x, $y, $width, $height, $alignment, $lineAlignment, $formatFlags): void {
+            $this->renderer->selectObject($font)->setTextColor($brush['color']);
+            $layout = [$x, $y, $width, $height];
 
-        $this->draw(function () use ($font, $brush, $lines, $lineHeight, $x, $y, $textAlign): void {
-            $this->renderer->selectObject($font)->setTextColor($brush['color'])->setTextAlign($textAlign);
+            // Lines are wrapped in the layout rectangle (except with StringFormatFlagsNoWrap)
+            $lines = [];
+            foreach (explode("\n", str_replace("\r\n", "\n", $text)) as $paragraph) {
+                $lines = array_merge($lines, $width > 0 && !($formatFlags & 0x1000) ? $this->wrapText($paragraph, $width) : [$paragraph]);
+            }
+            $lineHeight = -$font['height'] * 1.15;
+            $totalHeight = count($lines) * $lineHeight;
+            if ($lineAlignment == 1 && $height > 0) {
+                $y += ($height - $totalHeight) / 2;
+            } elseif ($lineAlignment == 2 && $height > 0) {
+                $y += $height - $totalHeight;
+            }
+            // StringAlignmentNear (left), StringAlignmentCenter, StringAlignmentFar (right)
+            $textAlign = [0 => 0, 1 => 6, 2 => 2][$alignment] ?? 0;
+            if ($width > 0) {
+                $x += [0 => 0, 1 => $width / 2, 2 => $width][$alignment] ?? 0;
+            }
+
+            // The text is clipped by the layout rectangle (except with StringFormatFlagsNoClip)
+            if ($width > 0 && $height > 0 && !($formatFlags & 0x4000)) {
+                $spans = $this->renderer->getFiguresSpans([$this->getRectFigure($layout)], false);
+                $clip = $this->renderer->getClipSpans();
+                $this->renderer->setClipSpans($clip === null ? $spans : Rasterizer::combineSpans($clip, $spans, Rasterizer::RGN_AND));
+            }
+
+            $this->renderer->setTextAlign($textAlign);
             foreach ($lines as $index => $line) {
                 $this->renderer->textOut($x, $y + $index * $lineHeight, $line);
             }
         });
+    }
+
+    /**
+     * Splits a paragraph into lines (at spaces) which fit in a width (world units)
+     *
+     * @return array<string>
+     */
+    protected function wrapText(string $paragraph, float $width): array
+    {
+        $words = preg_split('/(?<= )/u', $paragraph, -1, PREG_SPLIT_NO_EMPTY) ?: [''];
+        $lines = [];
+        $line = '';
+        foreach ($words as $word) {
+            if ($line !== '' && $this->renderer->getTextWidth(rtrim($line . $word)) > $width) {
+                $lines[] = rtrim($line);
+                $line = '';
+            }
+            $line .= $word;
+        }
+        $lines[] = rtrim($line);
+
+        return $lines;
     }
 
     protected function drawDriverString(int $flags, int $id, Buffer $data): void

@@ -32,6 +32,22 @@ class GD
     public const ROP_NOP = 0x00AA0029;
     public const ROP_PATCOPY = 0x00F00021;
     public const ROP_WHITENESS = 0x00FF0062;
+    public const ROP_SRCCOPY = 0x00CC0020;
+    public const ROP_DSTINVERT = 0x00550009;
+
+    /**
+     * Ordered dither matrix (8x8) of the percent hatch styles
+     */
+    protected const BAYER = [
+        [0, 32, 8, 40, 2, 34, 10, 42],
+        [48, 16, 56, 24, 50, 18, 58, 26],
+        [12, 44, 4, 36, 14, 46, 6, 38],
+        [60, 28, 52, 20, 62, 30, 54, 22],
+        [3, 35, 11, 43, 1, 33, 9, 41],
+        [51, 19, 59, 27, 49, 17, 57, 25],
+        [15, 47, 7, 39, 13, 45, 5, 37],
+        [63, 31, 55, 23, 61, 29, 53, 21],
+    ];
 
     /**
      * Maximum factor used for antialiasing
@@ -130,6 +146,12 @@ class GD
      * @var FontResolver
      */
     protected $fontResolver;
+    /**
+     * If the background of the image is transparent
+     *
+     * @var bool
+     */
+    protected $isTransparent = false;
 
     /**
      * @param int $width Width of the output image (in pixels)
@@ -138,8 +160,9 @@ class GD
      * @param float $deviceHeight Height of the image in device units (0 : the height of the image)
      * @param float $originX Device coordinates of the top left corner of the image
      * @param float $originY
+     * @param array<int>|null $backgroundColor Color of the background [r, g, b], or null for a transparent background
      */
-    public function __construct(int $width, int $height, float $deviceWidth = 0, float $deviceHeight = 0, float $originX = 0, float $originY = 0, ?FontResolver $fontResolver = null)
+    public function __construct(int $width, int $height, float $deviceWidth = 0, float $deviceHeight = 0, float $originX = 0, float $originY = 0, ?FontResolver $fontResolver = null, ?array $backgroundColor = [255, 255, 255])
     {
         $this->width = max(1, $width);
         $this->height = max(1, $height);
@@ -163,7 +186,11 @@ class GD
         $this->fontResolver = $fontResolver ?? new FontResolver();
 
         $this->canvas = imagecreatetruecolor($this->canvasWidth, $this->canvasHeight);
-        imagefilledrectangle($this->canvas, 0, 0, $this->canvasWidth, $this->canvasHeight, 0xFFFFFF);
+        $this->isTransparent = $backgroundColor === null;
+        // The transparent background is drawn without blending
+        imagealphablending($this->canvas, false);
+        imagefilledrectangle($this->canvas, 0, 0, $this->canvasWidth, $this->canvasHeight, $backgroundColor === null ? 0x7F000000 : $this->toGDColor($backgroundColor));
+        imagealphablending($this->canvas, true);
 
         $this->dc = $this->getDefaultDC();
     }
@@ -203,6 +230,11 @@ class GD
     public function render()
     {
         $image = imagecreatetruecolor($this->width, $this->height);
+        if ($this->isTransparent) {
+            // The alpha channel is copied (without blending) and saved
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+        }
         imagecopyresampled($image, $this->canvas, 0, 0, 0, 0, $this->width, $this->height, $this->canvasWidth, $this->canvasHeight);
         if (\PHP_VERSION_ID < 80000) {
             imagedestroy($this->canvas);
@@ -902,36 +934,135 @@ class GD
             return $this;
         }
         $spans = $this->rasterize([$this->getRectanglePoints($left, $top, $right, $bottom)], false);
-        if ($rop == self::ROP_PATCOPY && $this->dc['brush'] && $this->dc['brush']['style'] != 1) {
-            $this->drawSpans($spans, $this->dc['brush']['color']);
-        } elseif ($rop == self::ROP_BLACKNESS) {
-            $this->drawSpans($spans, [0, 0, 0]);
-        } elseif ($rop == self::ROP_WHITENESS) {
-            $this->drawSpans($spans, [255, 255, 255]);
+        $brush = $this->dc['brush'];
+        $hasBrush = $brush && $brush['style'] != 1;
+        if ($rop == self::ROP_PATCOPY) {
+            if ($hasBrush) {
+                $this->drawPaint($spans, $brush);
+            }
+
+            return $this;
+        }
+
+        // Other raster operations : the pattern is the color of the brush (black for the null brush)
+        $pattern = $hasBrush ? self::toRGB($brush['color']) : 0x000000;
+        if (!self::isRopDependent($rop, 1)) {
+            $color = self::applyRop($rop, $pattern, 0, 0);
+            $this->drawSpans($spans, [($color >> 16) & 0xFF, ($color >> 8) & 0xFF, $color & 0xFF]);
+
+            return $this;
+        }
+        if ($this->dc['clip'] !== null) {
+            $spans = Rasterizer::combineSpans($spans, $this->dc['clip'], Rasterizer::RGN_AND);
+        }
+        foreach ($spans as $y => $row) {
+            foreach ($row as $span) {
+                for ($x = $span[0]; $x <= $span[1]; ++$x) {
+                    imagesetpixel($this->canvas, $x, $y, self::applyRop($rop, $pattern, 0, $this->getDestinationColor($x, $y)));
+                }
+            }
         }
 
         return $this;
     }
 
     /**
-     * Fills rectangles (a region) with a color, or with the current brush
+     * Applies a ternary raster operation to colors (0xRRGGBB) : the third byte of the operation is a truth table
+     * of the pattern (P), the source (S) & the destination (D)
+     */
+    public static function applyRop(int $rop, int $pattern, int $source, int $destination): int
+    {
+        $table = ($rop >> 16) & 0xFF;
+        // Common operations
+        switch ($table) {
+            case 0x88: // SRCAND
+                return $source & $destination;
+            case 0xEE: // SRCPAINT
+                return $source | $destination;
+            case 0x66: // SRCINVERT
+                return $source ^ $destination;
+            case 0x44: // SRCERASE
+                return $source & ~$destination & 0xFFFFFF;
+            case 0x33: // NOTSRCCOPY
+                return ~$source & 0xFFFFFF;
+            case 0x55: // DSTINVERT
+                return ~$destination & 0xFFFFFF;
+            case 0x5A: // PATINVERT
+                return $pattern ^ $destination;
+            case 0xCC: // SRCCOPY
+                return $source;
+        }
+        $result = 0;
+        for ($bit = 0; $bit < 8; ++$bit) {
+            if ($table & (1 << $bit)) {
+                $result |= (($bit & 4) ? $pattern : ~$pattern)
+                    & (($bit & 2) ? $source : ~$source)
+                    & (($bit & 1) ? $destination : ~$destination);
+            }
+        }
+
+        return $result & 0xFFFFFF;
+    }
+
+    /**
+     * Returns the color (0xRRGGBB) of a pixel of the canvas for a raster operation : a transparent background is white (like paper)
+     */
+    protected function getDestinationColor(int $x, int $y): int
+    {
+        $color = imagecolorat($this->canvas, $x, $y);
+        $alpha = ($color >> 24) & 0x7F;
+        if ($alpha == 0) {
+            return $color & 0xFFFFFF;
+        }
+        // Composition over white
+        $ratio = $alpha / 127;
+        $red = (int) round((($color >> 16) & 0xFF) * (1 - $ratio) + 255 * $ratio);
+        $green = (int) round((($color >> 8) & 0xFF) * (1 - $ratio) + 255 * $ratio);
+        $blue = (int) round(($color & 0xFF) * (1 - $ratio) + 255 * $ratio);
+
+        return ($red << 16) | ($green << 8) | $blue;
+    }
+
+    /**
+     * Returns if a raster operation depends on the pattern (4), the source (2) or the destination (1)
+     */
+    public static function isRopDependent(int $rop, int $operand): bool
+    {
+        $table = ($rop >> 16) & 0xFF;
+        for ($bit = 0; $bit < 8; ++$bit) {
+            if ((($table >> $bit) & 1) != (($table >> ($bit ^ $operand)) & 1)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<int|float> $color [r, g, b]
+     */
+    protected static function toRGB(array $color): int
+    {
+        return ((int) $color[0] << 16) | ((int) $color[1] << 8) | (int) $color[2];
+    }
+
+    /**
+     * Fills rectangles (a region) with a brush, or with the current brush
      *
      * @param array<array<float>> $rectangles [[left, top, right, bottom], ...]
-     * @param array<int>|null $color [r, g, b]
+     * @param array<string, mixed>|null $brush See getStockObject()
      */
-    public function fillRectangles(array $rectangles, ?array $color = null): self
+    public function fillRectangles(array $rectangles, ?array $brush = null): self
     {
-        if ($color === null) {
-            if (!$this->dc['brush'] || $this->dc['brush']['style'] == 1) {
-                return $this;
-            }
-            $color = $this->dc['brush']['color'];
+        $brush = $brush ?? $this->dc['brush'];
+        if (!$brush || $brush['style'] == 1) {
+            return $this;
         }
         $polygons = [];
         foreach ($rectangles as $rectangle) {
             $polygons[] = $this->getRectanglePoints(...$rectangle);
         }
-        $this->drawSpans($this->rasterize($polygons, true), $color);
+        $this->drawPaint($this->rasterize($polygons, true), $brush);
 
         return $this;
     }
@@ -1072,22 +1203,80 @@ class GD
             }
         }
 
-        // Dashes : each dash is an open figure
-        if (!empty($pen['dashes'])) {
-            $dashed = [];
-            foreach ($figures as $figure) {
-                $dashed = array_merge($dashed, $this->getDashes($figure, $pen['dashes'], $pen['dashOffset'] ?? 0, $width));
+        // Compound lines : parallel lines, defined by pairs of positions in the width (from 0 to 1)
+        $strokes = [[$figures, $width]];
+        $compound = $pen['compound'] ?? [];
+        if (count($compound) >= 2) {
+            $strokes = [];
+            for ($i = 0; $i + 1 < count($compound); $i += 2) {
+                $offset = (($compound[$i] + $compound[$i + 1]) / 2 - 0.5) * $width;
+                $offsetFigures = [];
+                foreach ($figures as $figure) {
+                    $offsetFigures[] = ['points' => $this->getOffsetPoints($figure['points'], $figure['closed'], $offset), 'closed' => $figure['closed']];
+                }
+                $strokes[] = [$offsetFigures, max($this->supersampling, ($compound[$i + 1] - $compound[$i]) * $width)];
             }
-            $figures = $dashed;
-            $startCap = $endCap = $pen['dashCap'] ?? 0x0200;
         }
 
         $polygons = array_filter($capPolygons);
-        foreach ($figures as $figure) {
-            $polygons = array_merge($polygons, Rasterizer::getStrokePolygons($figure['points'], $figure['closed'], $width / 2, $endCap, $join, $this->dc['miterLimit'], $startCap));
+        foreach ($strokes as list($strokeFigures, $strokeWidth)) {
+            // Dashes : each dash is an open figure
+            if (!empty($pen['dashes'])) {
+                $dashed = [];
+                foreach ($strokeFigures as $figure) {
+                    $dashed = array_merge($dashed, $this->getDashes($figure, $pen['dashes'], $pen['dashOffset'] ?? 0, $width));
+                }
+                $strokeFigures = $dashed;
+                $startCap = $endCap = $pen['dashCap'] ?? 0x0200;
+            }
+            foreach ($strokeFigures as $figure) {
+                $polygons = array_merge($polygons, Rasterizer::getStrokePolygons($figure['points'], $figure['closed'], $strokeWidth / 2, $endCap, $join, $this->dc['miterLimit'], $startCap));
+            }
         }
 
         $this->drawPaint($this->rasterize($polygons, true), $pen);
+    }
+
+    /**
+     * Returns the points of a polyline moved perpendicularly (on the left of the direction for a positive offset)
+     *
+     * @param array<array<float>> $points
+     *
+     * @return array<array<float>>
+     */
+    protected function getOffsetPoints(array $points, bool $closed, float $offset): array
+    {
+        $count = count($points);
+        if ($offset == 0 || $count < 2) {
+            return $points;
+        }
+        // Unit normals of the segments
+        $normals = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $next = $points[($i + 1) % $count];
+            $length = hypot($next[0] - $points[$i][0], $next[1] - $points[$i][1]);
+            $normals[$i] = $length > 0 ? [($points[$i][1] - $next[1]) / $length, ($next[0] - $points[$i][0]) / $length] : null;
+        }
+
+        $result = [];
+        for ($i = 0; $i < $count; ++$i) {
+            $incoming = $i > 0 || $closed ? $normals[($i - 1 + $count) % $count] : null;
+            $outgoing = $i < $count - 1 || $closed ? $normals[$i] : null;
+            $normal = $incoming ?? $outgoing ?? [0, 0];
+            $scale = 1.0;
+            if ($incoming && $outgoing) {
+                // Miter of the two normals (limited for sharp angles)
+                $sum = [$incoming[0] + $outgoing[0], $incoming[1] + $outgoing[1]];
+                $length = hypot($sum[0], $sum[1]);
+                if ($length > 0) {
+                    $normal = [$sum[0] / $length, $sum[1] / $length];
+                    $scale = min(4.0, 1 / max(0.25, $normal[0] * $outgoing[0] + $normal[1] * $outgoing[1]));
+                }
+            }
+            $result[] = [$points[$i][0] + $normal[0] * $offset * $scale, $points[$i][1] + $normal[1] * $offset * $scale];
+        }
+
+        return $result;
     }
 
     /**
@@ -1198,6 +1387,22 @@ class GD
      */
     protected function drawPaint(array $spans, array $paint): void
     {
+        // Pattern brush : the bitmap is tiled (one pixel of the bitmap is one pixel of the image)
+        if (!empty($paint['pattern']['pixels'])) {
+            $this->drawPattern($spans, $paint['pattern']);
+
+            return;
+        }
+        // Hatched brush (BS_HATCHED) : lines of the color of the brush, on the background color (OPAQUE background mode)
+        if (($paint['style'] ?? 0) == 2 && isset($paint['hatch']) && !isset($paint['shader'])) {
+            $hatch = $paint['hatch'];
+            $foreground = $paint['color'];
+            $background = $this->dc['bkMode'] == 2 ? $this->dc['bkColor'] : [0, 0, 0, 0];
+            $paint['space'] = 'device';
+            $paint['shader'] = function (float $x, float $y) use ($hatch, $foreground, $background): array {
+                return self::isHatchForeground($hatch, (int) floor($x), (int) floor($y)) ? $foreground : $background;
+            };
+        }
         if (!isset($paint['shader'])) {
             $this->drawSpans($spans, $paint['color']);
 
@@ -1225,6 +1430,102 @@ class GD
 
             return $shader(($x * $m22 - $y * $m21) / $determinant, ($y * $m11 - $x * $m12) / $determinant);
         });
+    }
+
+    /**
+     * Returns the dashes of a GDI pen (in pen widths, see the key `dashes` of pens), or null for a solid pen
+     *
+     * @param int $style Style of the pen : PS_DASH (1), PS_DOT (2), PS_DASHDOT (3), PS_DASHDOTDOT (4), PS_USERSTYLE (7), PS_ALTERNATE (8)
+     * @param bool $isCosmetic If the pen is cosmetic (one pixel wide) : the dashes are in pixels
+     * @param array<float> $userStyle Lengths of dashes & spaces of PS_USERSTYLE, in logical units (geometric pens) or pixels (cosmetic pens)
+     *
+     * @return array<float>|null
+     */
+    public static function getPenDashes(int $style, bool $isCosmetic, float $width, array $userStyle = []): ?array
+    {
+        switch ($style & 0x0F) {
+            case 1:
+                return $isCosmetic ? [18, 6] : [3, 1];
+            case 2:
+                return $isCosmetic ? [3, 3] : [1, 1];
+            case 3:
+                return $isCosmetic ? [9, 6, 3, 6] : [3, 1, 1, 1];
+            case 4:
+                return $isCosmetic ? [9, 3, 3, 3, 3, 3] : [3, 1, 1, 1, 1, 1];
+            case 7:
+                if (count($userStyle) < 2) {
+                    return null;
+                }
+
+                return array_map(function (float $length) use ($isCosmetic, $width): float {
+                    return $isCosmetic || $width <= 0 ? $length : $length / $width;
+                }, $userStyle);
+            case 8:
+                return [1, 1];
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Returns if a pixel of the image is in the lines of a hatch (8x8 pattern)
+     *
+     * @param int $style Horizontal (0), vertical (1), forward diagonal (2), backward diagonal (3), cross (4), diagonal cross (5),
+     *                   percent of foreground (6 to 17, EMF+ only) or other EMF+ styles (pattern of 50%)
+     */
+    public static function isHatchForeground(int $style, int $x, int $y): bool
+    {
+        $x = abs($x);
+        $y = abs($y);
+        switch ($style) {
+            case 0:
+                return $y % 8 == 0;
+            case 1:
+                return $x % 8 == 0;
+            case 2:
+                return ($x - $y) % 8 == 0;
+            case 3:
+                return ($x + $y) % 8 == 0;
+            case 4:
+                return $x % 8 == 0 || $y % 8 == 0;
+            case 5:
+                return ($x - $y) % 8 == 0 || ($x + $y) % 8 == 0;
+            default:
+                // Ordered dither
+                $percent = [6 => 5, 7 => 10, 8 => 20, 9 => 25, 10 => 30, 11 => 40, 12 => 50, 13 => 60, 14 => 70, 15 => 75, 16 => 80, 17 => 90][$style] ?? 50;
+
+                return self::BAYER[$y % 8][$x % 8] < $percent * 64 / 100;
+        }
+    }
+
+    /**
+     * Fills spans with a tiled bitmap
+     *
+     * @param array<int, array<array<int>>> $spans
+     * @param array{width: int, height: int, pixels: array<array<int>>} $pattern
+     */
+    protected function drawPattern(array $spans, array $pattern): void
+    {
+        if ($this->dc['clip'] !== null) {
+            $spans = Rasterizer::combineSpans($spans, $this->dc['clip'], Rasterizer::RGN_AND);
+        }
+        $size = $this->supersampling;
+        $tile = imagecreatetruecolor($pattern['width'] * $size, $pattern['height'] * $size);
+        imagealphablending($tile, false);
+        foreach ($pattern['pixels'] as $y => $line) {
+            foreach ($line as $x => $pixel) {
+                imagefilledrectangle($tile, $x * $size, $y * $size, ($x + 1) * $size - 1, ($y + 1) * $size - 1, $pixel);
+            }
+        }
+        imagesettile($this->canvas, $tile);
+        foreach ($spans as $y => $row) {
+            foreach ($row as $span) {
+                imagefilledrectangle($this->canvas, $span[0], $y, $span[1], $y, IMG_COLOR_TILED);
+            }
+        }
+        if (\PHP_VERSION_ID < 80000) {
+            imagedestroy($tile);
+        }
     }
 
     /**
@@ -1573,10 +1874,12 @@ class GD
      * @param array<int> $dx Advances of each character (logical units)
      * @param int $options ETO_OPAQUE (0x02), ETO_CLIPPED (0x04)
      * @param array<int> $rectangle Logical rectangle used by ETO_OPAQUE & ETO_CLIPPED [left, top, right, bottom]
+     * @param array<int> $dy Vertical advances of each character (ETO_PDY : logical units, upwards in the direction of the font)
      */
-    public function textOut(float $x, float $y, string $text, array $dx = [], int $options = 0, array $rectangle = [0, 0, 0, 0]): self
+    public function textOut(float $x, float $y, string $text, array $dx = [], int $options = 0, array $rectangle = [0, 0, 0, 0], array $dy = []): self
     {
         $font = $this->dc['font'];
+        $text = $this->convertSymbols($text);
         $clip = $this->dc['clip'];
         $hasRectangle = $rectangle[2] > $rectangle[0] && $rectangle[3] > $rectangle[1];
 
@@ -1657,11 +1960,14 @@ class GD
         // Position of each glyph
         $glyphs = [[$text, $baseX, $baseY]];
         if (!empty($dx)) {
+            list(, , $m21, $m22) = $this->getMatrix();
+            $scaleY = hypot($m21, $m22);
             $glyphs = [];
-            $advance = 0;
+            $advance = $rise = 0;
             foreach (preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $i => $char) {
-                $glyphs[] = [$char, $baseX + $ux * $advance, $baseY + $uy * $advance];
+                $glyphs[] = [$char, $baseX + $ux * $advance - $vx * $rise, $baseY + $uy * $advance - $vy * $rise];
                 $advance += ($dx[$i] ?? 0) * $scaleX;
+                $rise += ($dy[$i] ?? 0) * $scaleY;
             }
         }
         $this->drawGlyphs($glyphs, $pointSize, $angle, $fontFile, $this->dc['textColor'], $clip);
@@ -1718,6 +2024,21 @@ class GD
     }
 
     /**
+     * Returns the width of a text with the current font, in logical units (0 if no font is found)
+     */
+    public function getTextWidth(string $text): float
+    {
+        $metrics = $this->getTextMetrics();
+        if ($metrics === null || $text === '') {
+            return 0.0;
+        }
+        list($fontFile, $pointSize, , , $scaleX) = $metrics;
+        $box = imagettfbbox($pointSize, 0, $fontFile, $this->escapeText($this->convertSymbols($text)));
+
+        return $box && $scaleX > 0 ? ($box[2] - $box[0]) / $scaleX : 0.0;
+    }
+
+    /**
      * Draws glyphs with the current font, each one at its position (logical coordinates of the baseline)
      *
      * @param array<array{0: string, 1: float, 2: float}> $glyphs UTF-8 character & position
@@ -1735,7 +2056,7 @@ class GD
         }, $glyphs));
         $canvasGlyphs = [];
         foreach ($glyphs as $key => $glyph) {
-            $canvasGlyphs[] = [$glyph[0], $points[$key][0], $points[$key][1]];
+            $canvasGlyphs[] = [$this->convertSymbols($glyph[0]), $points[$key][0], $points[$key][1]];
         }
         $this->drawGlyphs($canvasGlyphs, $pointSize, $angle, $fontFile, $this->dc['textColor'], $this->dc['clip']);
 
@@ -1796,6 +2117,11 @@ class GD
                         continue;
                     }
                     $background = imagecolorat($this->canvas, $x, $y);
+                    // A background with an alpha channel is blended by GD
+                    if ($background & 0x7F000000) {
+                        imagesetpixel($this->canvas, $x, $y, $this->toGDColor([$color[0], $color[1], $color[2], $coverage * 255]));
+                        continue;
+                    }
                     $red = (int) round($color[0] * $coverage + (($background >> 16) & 0xFF) * (1 - $coverage));
                     $green = (int) round($color[1] * $coverage + (($background >> 8) & 0xFF) * (1 - $coverage));
                     $blue = (int) round($color[2] * $coverage + ($background & 0xFF) * (1 - $coverage));
@@ -1806,6 +2132,14 @@ class GD
         if (\PHP_VERSION_ID < 80000) {
             imagedestroy($mask);
         }
+    }
+
+    /**
+     * Converts the characters of the Symbol font to Unicode : the text is drawn with another font
+     */
+    protected function convertSymbols(string $text): string
+    {
+        return strtolower(trim((string) ($this->dc['font']['face'] ?? ''))) == 'symbol' ? Encoding::decodeSymbol($text) : $text;
     }
 
     /**
@@ -1992,13 +2326,13 @@ class GD
     }
 
     /**
-     * Copies an opaque bitmap in a rectangle of the canvas (fast path of drawImage())
+     * Copies a bitmap in a rectangle of the canvas (fast path of drawImage()), its alpha channel is blended
      *
      * @param array{width: int, height: int, pixels: array<array<int>>} $bitmap
      * @param array<float> $origin Upper-left corner (canvas coordinates)
      * @param array<float> $source Source rectangle in the bitmap [x, y, width, height]
      *
-     * @return bool False if the bitmap is not opaque or if the source rectangle is not in the bitmap
+     * @return bool False if the source rectangle is not in the bitmap
      */
     protected function copyImage(array $bitmap, array $origin, float $width, float $height, array $source): bool
     {
@@ -2009,12 +2343,10 @@ class GD
         }
 
         $image = imagecreatetruecolor($bitmap['width'], $bitmap['height']);
+        // The alpha channel of pixels is kept
+        imagealphablending($image, false);
         foreach ($bitmap['pixels'] as $y => $line) {
             foreach ($line as $x => $pixel) {
-                // Pixels with an alpha channel are drawn pixel by pixel
-                if ($pixel & 0x7F000000) {
-                    return false;
-                }
                 imagesetpixel($image, $x, $y, $pixel);
             }
         }
@@ -2044,11 +2376,16 @@ class GD
      *
      * @param array{width: int, height: int, pixels: array<array<int>>} $bitmap Decoded bitmap (see Bitmap)
      */
-    public function drawBitmap(array $bitmap, int $xDest, int $yDest, int $cxDest, int $cyDest, int $xSrc, int $ySrc, int $cxSrc, int $cySrc): self
+    public function drawBitmap(array $bitmap, int $xDest, int $yDest, int $cxDest, int $cyDest, int $xSrc, int $ySrc, int $cxSrc, int $cySrc, int $rop = self::ROP_SRCCOPY): self
     {
-        if ($cxDest == 0 || $cyDest == 0 || empty($bitmap['pixels'])) {
+        if ($cxDest == 0 || $cyDest == 0 || empty($bitmap['pixels']) || $rop == self::ROP_NOP) {
             return $this;
         }
+        // Raster operation (other than SRCCOPY) : the pattern is the color of the brush (black for the null brush)
+        $isCopy = $rop == self::ROP_SRCCOPY;
+        $hasDestination = self::isRopDependent($rop, 1);
+        $brush = $this->dc['brush'];
+        $pattern = $brush && $brush['style'] != 1 ? self::toRGB($brush['color']) : 0x000000;
         list($m11, $m12, $m21, $m22, $dx, $dy) = $this->getMatrix();
         $determinant = $m11 * $m22 - $m21 * $m12;
         if ($determinant == 0) {
@@ -2090,9 +2427,14 @@ class GD
                     }
                     $sourceX = $xSrc + (int) floor($u * $cxSrc);
                     $sourceY = $ySrc + (int) floor($v * $cySrc);
-                    if (isset($bitmap['pixels'][$sourceY][$sourceX])) {
-                        imagesetpixel($this->canvas, $x, $y, $bitmap['pixels'][$sourceY][$sourceX]);
+                    if (!isset($bitmap['pixels'][$sourceY][$sourceX])) {
+                        continue;
                     }
+                    $pixel = $bitmap['pixels'][$sourceY][$sourceX];
+                    if (!$isCopy) {
+                        $pixel = self::applyRop($rop, $pattern, $pixel & 0xFFFFFF, $hasDestination ? $this->getDestinationColor($x, $y) : 0);
+                    }
+                    imagesetpixel($this->canvas, $x, $y, $pixel);
                 }
             }
         }

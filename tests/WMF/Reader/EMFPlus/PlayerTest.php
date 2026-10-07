@@ -7,6 +7,7 @@ namespace Tests\PhpOffice\WMF\Reader\EMFPlus;
 use GdImage;
 use PhpOffice\WMF\Exception\WMFException;
 use PhpOffice\WMF\Reader\EMFPlus\Player;
+use PhpOffice\WMF\Renderer\FontResolver;
 use PhpOffice\WMF\Renderer\GD as Renderer;
 use PHPUnit\Framework\TestCase;
 
@@ -186,5 +187,56 @@ class PlayerTest extends TestCase
         $this->expectException(WMFException::class);
 
         $this->play(pack('v2V2', Player::EMFPLUS_CLEAR, 0, 4, 0));
+    }
+
+    /**
+     * Returns the number of rows containing dark pixels
+     *
+     * @phpstan-ignore-next-line
+     *
+     * @param GdImage|resource $image
+     */
+    private function countDarkRows($image): int
+    {
+        $rows = 0;
+        for ($y = 0; $y < imagesy($image); ++$y) {
+            for ($x = 0; $x < imagesx($image); ++$x) {
+                if ((imagecolorat($image, $x, $y) & 0xFF) < 0x80) {
+                    ++$rows;
+                    break;
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    public function testDrawStringWrapped(): void
+    {
+        if ((new FontResolver())->resolve(['face' => 'Arial', 'weight' => 400, 'italic' => false, 'pitchAndFamily' => 0]) === null) {
+            $this->markTestSkipped('No font available');
+        }
+        // Font object (id 0) : Arial, 10 pixels
+        $font = pack('V', self::VERSION) . pack('g', 10) . pack('V', 2) . pack('l', 0) . pack('V2', 0, 5) . "A\0r\0i\0a\0l\0";
+        $text = 'aaa bbb ccc ddd';
+        $drawString = function (float $width) use ($text): string {
+            return $this->record(
+                Player::EMFPLUS_DRAW_STRING,
+                0x8000,
+                pack('V3', 0xFF000000, 0xFFFFFFFF, strlen($text)) . pack('g4', 0, 0, $width, $width > 0 ? 100 : 0) . iconv('UTF-8', 'UTF-16LE', $text)
+            );
+        };
+
+        $renderer = new Renderer(100, 100);
+        (new Player($renderer))->play($this->header() . $this->record(Player::EMFPLUS_OBJECT, 0x0600, $font) . $drawString(0));
+        $singleLine = $this->countDarkRows($renderer->render());
+
+        // The layout rectangle is narrow : the text is wrapped
+        $renderer = new Renderer(100, 100);
+        (new Player($renderer))->play($this->header() . $this->record(Player::EMFPLUS_OBJECT, 0x0600, $font) . $drawString(25));
+        $wrapped = $this->countDarkRows($renderer->render());
+
+        $this->assertGreaterThan(0, $singleLine);
+        $this->assertGreaterThan(2 * $singleLine, $wrapped);
     }
 }

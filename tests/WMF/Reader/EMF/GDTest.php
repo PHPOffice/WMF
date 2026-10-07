@@ -233,4 +233,28 @@ class GDTest extends AbstractTestReader
         $this->assertTrue($reader->loadFromString($content));
         $this->assertFalse($reader->isEMFPlusRendered());
     }
+
+    public function testBackgroundColor(): void
+    {
+        $file = $this->getResourceDir() . 'computer_mail.emf';
+        $outputFile = $this->getResourceDir() . 'output_background.jpg';
+
+        $reader = new GD();
+        $this->assertEquals([255, 255, 255], $reader->getBackgroundColor());
+
+        // Transparent background
+        $this->assertInstanceOf(GD::class, $reader->setBackgroundColor(null));
+        $this->assertNull($reader->getBackgroundColor());
+        $reader->load($file);
+        $this->assertEquals(127, (imagecolorat($reader->getResource(), 0, 0) >> 24) & 0x7F);
+        // Formats without alpha channel are saved on a white background
+        $this->assertTrue($reader->save($outputFile, 'jpg'));
+        $this->assertGreaterThan(0xF0, imagecolorat(imagecreatefromjpeg($outputFile), 0, 0) & 0xFF);
+        @unlink($outputFile);
+
+        // Colored background
+        $reader->setBackgroundColor([0, 0, 255]);
+        $reader->load($file);
+        $this->assertEquals(0x0000FF, imagecolorat($reader->getResource(), 0, 0));
+    }
 }
