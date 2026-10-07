@@ -574,6 +574,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#setbackgroundcolor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setBackgroundColor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#isemf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1214,6 +1225,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#setbackgroundcolor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setBackgroundColor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#isemf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1351,44 +1373,43 @@ The image is generated at 96 DPI, based on the frame of the EMF file (big images
 <p>It supports :</p>
 <ul>
 <li>paths &amp; shapes (polygons, polylines, Bézier curves, rectangles, rounded rectangles, ellipses, arcs, chords, pies)</li>
-<li>pens (width, end caps, joins) &amp; brushes (solid, pattern brushes are approximated by their average color)</li>
+<li>pens (width, end caps, joins, dashes) &amp; brushes (solid, hatched, pattern brushes)</li>
 <li>world &amp; page transforms (map modes, window, viewport)</li>
 <li>clipping (paths, rectangles, regions)</li>
 <li>bitmaps (<code>EMR_STRETCHDIBITS</code>, <code>EMR_BITBLT</code>, <code>EMR_STRETCHBLT</code>, including JPEG &amp; PNG bitmaps) &amp; gradients (<code>EMR_GRADIENTFILL</code>)</li>
 <li>texts (<code>EMR_EXTTEXTOUTW</code>, <code>EMR_EXTTEXTOUTA</code>, <code>EMR_SMALLTEXTOUT</code>), with TrueType/OpenType fonts</li>
 </ul>
 <p>If a not supported record is found (like <code>EMR_ALPHABLEND</code>, <code>EMR_MASKBLT</code>, <code>EMR_PLGBLT</code>, <code>EMR_TRANSPARENTBLT</code>, <code>EMR_POLYDRAW</code> or <code>EMR_EXTFLOODFILL</code>),
-or a bitmap which is not supported (like compressed bitmaps, <code>BI_RLE4</code> &amp; <code>BI_RLE8</code>),
+or a bitmap which is not supported (like CMYK bitmaps, <code>BI_CMYK</code>),
 an exception is thrown (or <code>load</code> returns <code>false</code>, if exceptions are disabled).
 Corrupted files throw an exception too.</p>
 <h3 id="known-limitations">Known limitations</h3>
 <ul>
-<li>The background of the image is white : the image is never transparent.</li>
+<li>The background of the image is white by default (see <a href="#setbackgroundcolor"><code>setBackgroundColor</code></a>).</li>
 <li>The content outside of the frame of the file is clipped.</li>
 <li>For the limitations of EMF+ files, see <a href="#known-limitations-of-emf">EMF+ &gt; Known limitations</a>.</li>
 <li>Pens :<ul>
-<li>dashed pens are drawn as solid lines,</li>
-<li>pens have a minimal width of one pixel.</li>
+<li>pens have a minimal width of one pixel,</li>
+<li>the dashes of geometric pens are proportional to their width, and dashes have flat caps.</li>
 </ul>
 </li>
 <li>Brushes :<ul>
-<li>hatched brushes are drawn as solid brushes,</li>
-<li>pattern brushes are drawn with the average color of their pattern.</li>
+<li>the patterns of pattern brushes are aligned on the origin of the image (the brush origin is ignored).</li>
 </ul>
 </li>
 <li>Bitmaps :<ul>
-<li>compressed bitmaps (<code>BI_RLE4</code> &amp; <code>BI_RLE8</code>) are not supported : an exception is thrown,</li>
+<li>CMYK bitmaps (<code>BI_CMYK</code>, <code>BI_CMYKRLE4</code> &amp; <code>BI_CMYKRLE8</code>) are not supported : an exception is thrown,</li>
+<li>the pixels skipped by compressed bitmaps (<code>BI_RLE4</code> &amp; <code>BI_RLE8</code>) are transparent,</li>
 <li>bitmaps using the palette of the file (<code>DIB_PAL_COLORS</code>) are drawn with a gray scale (the palette is not supported),</li>
-<li>raster operations are not supported : bitmaps are copied (<code>SRCCOPY</code>), and rectangles without bitmap are only drawn
-  for <code>PATCOPY</code>, <code>BLACKNESS</code> &amp; <code>WHITENESS</code>,</li>
+<li>raster operations are applied on the image : a transparent background is used as a white background,</li>
 <li>corrupted JPEG &amp; PNG bitmaps are not drawn.</li>
 </ul>
 </li>
 <li>Texts :<ul>
 <li>texts are not drawn if no font is found (see <a href="#fonts">Fonts</a>),</li>
 <li>the metrics of fonts are approximated (ascent, descent), the width &amp; the orientation of fonts are ignored,</li>
-<li>the vertical advances of characters (<code>ETO_PDY</code>) are ignored,</li>
-<li>the charset is ignored : symbol fonts (like <code>Symbol</code> or <code>Wingdings</code>) are drawn with another font.</li>
+<li>the characters of the <code>Symbol</code> font are converted to Unicode (Greek letters, mathematical symbols...),
+  other symbol fonts (like <code>Wingdings</code>) are drawn with another font.</li>
 </ul>
 </li>
 <li><code>EMR_SETROP2</code>, <code>EMR_SETSTRETCHBLTMODE</code> &amp; palettes are ignored.</li>
@@ -1428,7 +1449,7 @@ If no font is found, texts are not drawn.</p>
   hatches, textures, linear &amp; path gradients)</li>
 <li>world &amp; page transforms (units : pixel, point, inch, document, millimeter), containers &amp; saved states</li>
 <li>clipping (rectangles, paths, regions)</li>
-<li>images : bitmaps (all pixel formats, PNG, JPEG, GIF...) &amp; metafiles (placeable WMF, EMF &amp; EMF+), drawn in parallelograms</li>
+<li>images : bitmaps (all pixel formats, PNG, JPEG, GIF...) &amp; metafiles (WMF, EMF &amp; EMF+), drawn in parallelograms</li>
 <li>texts (<code>EmfPlusDrawString</code> &amp; <code>EmfPlusDrawDriverString</code>)</li>
 </ul>
 <h3 id="methods-for-emf">Methods for EMF+</h3>
@@ -1450,19 +1471,19 @@ If no font is found, texts are not drawn.</p>
 <li>Rendering hints (antialiasing, interpolation, compositing...) are ignored : the drawing is always antialiased.</li>
 <li>Image attributes (color adjustments, wrap modes of images) &amp; image effects (<code>EmfPlusSerializableObject</code>) are ignored.</li>
 <li>Pens :<ul>
-<li>compound lines are drawn as a single line, the transform &amp; the alignment of pens are ignored,</li>
+<li>the transform &amp; the alignment of pens are ignored, the lines of compound pens have mitered joins,</li>
 <li>custom caps are drawn as filled shapes, triangle &amp; diamond caps are drawn as flat caps.</li>
 </ul>
 </li>
 <li>Brushes :<ul>
 <li>hatch styles other than horizontal, vertical, diagonal, cross &amp; percent styles are drawn with a pattern of 50%,</li>
-<li>the focus scales &amp; the surrounding colors (except the first one) of path gradients are ignored,</li>
+<li>the focus scales of path gradients are ignored, and their surrounding colors are interpolated along the boundary (without preset colors),</li>
 <li>the vertical blend of linear gradients is ignored.</li>
 </ul>
 </li>
-<li>Images : the source rectangle of metafiles is ignored (the whole metafile is drawn), and WMF files without placeable header are not drawn.</li>
+<li>Images : the source rectangle of metafiles is ignored (the whole metafile is drawn).</li>
 <li>Texts :<ul>
-<li>texts are not wrapped, and the flags of string formats (direction, trimming, tabs...) are ignored,</li>
+<li>texts are wrapped at spaces, and the flags of string formats (except <code>NoWrap</code> &amp; <code>NoClip</code>) are ignored (direction, trimming, tabs...),</li>
 <li><code>EmfPlusDrawDriverString</code> with indexes of glyphs (instead of characters) is not supported.</li>
 </ul>
 </li>
@@ -1493,6 +1514,21 @@ The <code>Imagick</code> backend returns a <code>Imagick</code> object.</p>
 <span class="nv">$mediaType</span> <span class="o">=</span> <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">getMediaType</span><span class="p">();</span>
 
 <span class="k">echo</span> <span class="s1">'The media type for a EMF file is '</span> <span class="o">.</span> <span class="nv">$mediaType</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="setbackgroundcolor"><code>setBackgroundColor</code></h3>
+<p>The method defines the color of the background (white by default), or a transparent background (<code>null</code>).
+The background must be defined before loading the file.
+Formats without alpha channel (<code>gif</code>, <code>jpg</code> &amp; <code>wbmp</code>) are saved with a white background.</p>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\EMF\GD</span><span class="p">;</span>
+
+<span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">GD</span><span class="p">();</span>
+<span class="c1">// Transparent background</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">setBackgroundColor</span><span class="p">(</span><span class="k">null</span><span class="p">);</span>
+<span class="c1">// Blue background</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">setBackgroundColor</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">]);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.emf'</span><span class="p">);</span>
 </code></pre></div>
 <h3 id="isemf"><code>isEMF</code></h3>
 <p>The method returns if the file is supported by the library.</p>

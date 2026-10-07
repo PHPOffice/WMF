@@ -507,6 +507,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#setbackgroundcolor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setBackgroundColor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#iswmf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1136,6 +1147,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#setbackgroundcolor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setBackgroundColor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#iswmf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1264,41 +1286,41 @@ Each backend is tested on different criteria: extension loaded, format support.<
 </code></pre></div>
 <h2 id="gd-backend">GD backend</h2>
 <p>The <code>GD</code> backend is a renderer written in pure PHP, shared with the EMF reader (<code>PhpOffice\WMF\Renderer\GD</code>).
-Only placeable WMF files are supported : the image is generated at 72 DPI, based on the bounding box of the placeable header.
-The window of the file (<code>META_SETWINDOWORG</code> &amp; <code>META_SETWINDOWEXT</code>) is mapped to the image : the map mode and the viewport are ignored.</p>
+The image is generated at 72 DPI, based on the bounding box of the placeable header.
+For WMF files without placeable header, the bounding box is the first window of the file (<code>META_SETWINDOWORG</code> &amp; <code>META_SETWINDOWEXT</code>),
+and the number of logical units per inch depends on the map mode (<code>META_SETMAPMODE</code>) : 1440 for <code>MM_ANISOTROPIC</code> &amp; <code>MM_ISOTROPIC</code>.
+The window of the file is mapped to the image : the map mode and the viewport are ignored.</p>
 <p>It supports :</p>
 <ul>
 <li>shapes (polygons, polylines, rectangles, rounded rectangles, ellipses, arcs, chords, pies)</li>
-<li>pens (width, end caps, joins) &amp; brushes (solid, pattern brushes are approximated by their average color)</li>
+<li>pens (width, end caps, joins, dashes) &amp; brushes (solid, hatched, pattern brushes)</li>
 <li>regions &amp; clipping</li>
 <li>bitmaps (<code>META_STRETCHDIB</code>, <code>META_DIBBITBLT</code>, <code>META_DIBSTRETCHBLT</code>, <code>META_BITBLT</code>, <code>META_STRETCHBLT</code>, <code>META_SETDIBTODEV</code>) &amp; flood fills</li>
 <li>texts (<code>META_TEXTOUT</code>, <code>META_EXTTEXTOUT</code>), with TrueType/OpenType fonts</li>
 </ul>
-<p>If a not supported record is found (like <code>META_DRAWTEXT</code>), or a bitmap which is not supported (like compressed bitmaps, <code>BI_RLE4</code> &amp; <code>BI_RLE8</code>),
+<p>If a not supported record is found (like <code>META_DRAWTEXT</code>), or a bitmap which is not supported (like CMYK bitmaps, <code>BI_CMYK</code>),
 an exception is thrown (or <code>load</code> returns <code>false</code>, if exceptions are disabled).
 Corrupted files throw an exception too.</p>
 <h3 id="known-limitations">Known limitations</h3>
 <ul>
-<li>Only placeable WMF files are supported.</li>
-<li>The background of the image is white : the image is never transparent.</li>
+<li>WMF files without placeable header must define a window (<code>META_SETWINDOWEXT</code>) : else, an exception is thrown.</li>
+<li>The background of the image is white by default (see <a href="#setbackgroundcolor"><code>setBackgroundColor</code></a>).</li>
 <li>The map mode &amp; the viewport (<code>META_SETMAPMODE</code>, <code>META_SETVIEWPORTORG</code>, <code>META_SETVIEWPORTEXT</code>...) are ignored.</li>
 <li>Pens :<ul>
-<li>dashed pens are drawn as solid lines,</li>
-<li>pens have a minimal width of one pixel.</li>
+<li>pens have a minimal width of one pixel, and dashes have flat caps.</li>
 </ul>
 </li>
 <li>Brushes :<ul>
-<li>hatched brushes are drawn as solid brushes,</li>
-<li>pattern brushes are drawn with the average color of their pattern.</li>
+<li>the patterns of pattern brushes are aligned on the origin of the image (the brush origin is ignored).</li>
 </ul>
 </li>
-<li>Regions : <code>META_INVERTREGION</code> is ignored, and <code>META_FRAMEREGION</code> draws the frame of each rectangle of the region.</li>
+<li>Regions : <code>META_FRAMEREGION</code> draws the frame of each rectangle of the region.</li>
 <li>Bitmaps :<ul>
-<li>compressed bitmaps (<code>BI_RLE4</code> &amp; <code>BI_RLE8</code>) are not supported : an exception is thrown,</li>
+<li>CMYK bitmaps (<code>BI_CMYK</code>, <code>BI_CMYKRLE4</code> &amp; <code>BI_CMYKRLE8</code>) are not supported : an exception is thrown,</li>
+<li>the pixels skipped by compressed bitmaps (<code>BI_RLE4</code> &amp; <code>BI_RLE8</code>) are transparent,</li>
 <li>bitmaps using the palette of the file (<code>DIB_PAL_COLORS</code>) and indexed device dependent bitmaps (<code>Bitmap16</code>) are drawn with a gray scale,
   and monochrome <code>Bitmap16</code> are drawn in black &amp; white,</li>
-<li>raster operations are not supported : bitmaps are copied (<code>SRCCOPY</code>), and rectangles without bitmap are only drawn
-  for <code>PATCOPY</code>, <code>BLACKNESS</code> &amp; <code>WHITENESS</code>,</li>
+<li>raster operations are applied on the image : a transparent background is used as a white background,</li>
 <li>corrupted JPEG &amp; PNG bitmaps are not drawn.</li>
 </ul>
 </li>
@@ -1306,7 +1328,9 @@ Corrupted files throw an exception too.</p>
 <li>Texts :<ul>
 <li>texts are not drawn if no font is found (see <a href="#fonts">Fonts</a>),</li>
 <li>the metrics of fonts are approximated (ascent, descent), the width &amp; the orientation of fonts are ignored,</li>
-<li>the charset is ignored : texts are decoded as Windows-1252, and symbol fonts (like <code>Symbol</code> or <code>Wingdings</code>) are drawn with another font.</li>
+<li>the charset is ignored : texts are decoded as Windows-1252,</li>
+<li>the characters of the <code>Symbol</code> font are converted to Unicode (Greek letters, mathematical symbols...),
+  other symbol fonts (like <code>Wingdings</code>) are drawn with another font.</li>
 </ul>
 </li>
 <li><code>META_SETROP2</code>, <code>META_SETSTRETCHBLTMODE</code>, <code>META_ESCAPE</code> &amp; palettes are ignored.</li>
@@ -1350,6 +1374,21 @@ The <code>Imagick</code> backend returns a <code>Imagick</code> object.</p>
 <span class="nv">$mediaType</span> <span class="o">=</span> <span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">getMediaType</span><span class="p">();</span>
 
 <span class="k">echo</span> <span class="s1">'The media type for a WMF file is '</span> <span class="o">.</span> <span class="nv">$$mediaType</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="setbackgroundcolor"><code>setBackgroundColor</code></h3>
+<p>The method defines the color of the background (white by default), or a transparent background (<code>null</code>).
+The background must be defined before loading the file.
+Formats without alpha channel (<code>gif</code>, <code>jpg</code> &amp; <code>wbmp</code>) are saved with a white background.</p>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?php</span>
+
+<span class="k">use</span> <span class="nx">PhpOffice\WMF\Reader\WMF\GD</span><span class="p">;</span>
+
+<span class="nv">$reader</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">GD</span><span class="p">();</span>
+<span class="c1">// Transparent background</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">setBackgroundColor</span><span class="p">(</span><span class="k">null</span><span class="p">);</span>
+<span class="c1">// Blue background</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">setBackgroundColor</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">]);</span>
+<span class="nv">$reader</span><span class="o">-&gt;</span><span class="na">load</span><span class="p">(</span><span class="s1">'sample.wmf'</span><span class="p">);</span>
 </code></pre></div>
 <h3 id="iswmf"><code>isWMF</code></h3>
 <p>The method returns if the file is supported by the library.</p>
