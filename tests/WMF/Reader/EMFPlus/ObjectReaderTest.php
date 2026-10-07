@@ -58,6 +58,24 @@ class ObjectReaderTest extends TestCase
         $this->assertEquals([128, 128, 128, 255], $brush['shader'](15, 5));
     }
 
+    public function testPathGradientBrushSurroundingColors(): void
+    {
+        // Square from (0, 0) to (10, 10), white in the center : red on the top edge, blue on the bottom edge
+        $data = pack('V3', self::VERSION, ObjectReader::BRUSH_PATH_GRADIENT, 0) . pack('l', 0)
+            . pack('V', 0xFFFFFFFF) . pack('g2', 5, 5)
+            . pack('V5', 4, 0xFFFF0000, 0xFFFF0000, 0xFF0000FF, 0xFF0000FF)
+            . pack('V', 4) . pack('g8', 0, 0, 10, 0, 10, 10, 0, 10);
+        $brush = $this->read(ObjectReader::OBJECT_BRUSH, $data);
+
+        $top = $brush['shader'](5, 0.1);
+        $bottom = $brush['shader'](5, 9.9);
+        $this->assertGreaterThan(200, $top[0]);
+        $this->assertLessThan(50, $top[2]);
+        $this->assertLessThan(50, $bottom[0]);
+        $this->assertGreaterThan(200, $bottom[2]);
+        $this->assertEquals([255, 255, 255, 255], $brush['shader'](5, 5));
+    }
+
     public function testHatchBrush(): void
     {
         // HatchStyleHorizontal : red lines on white
@@ -84,6 +102,23 @@ class ObjectReaderTest extends TestCase
         $this->assertEquals(0x00011000, $pen['style']);
         $this->assertEquals([3, 1], $pen['dashes']);
         $this->assertEquals([0, 0, 255, 255], $pen['color']);
+    }
+
+    public function testPenCompound(): void
+    {
+        // Compound line : two lines
+        $data = pack('V4', self::VERSION, 0, 0x0400, 0) . pack('g', 4.0)
+            . pack('V', 4) . pack('g4', 0, 0.25, 0.75, 1)
+            . $this->getSolidBrush(0xFF000000);
+        $pen = $this->read(ObjectReader::OBJECT_PEN, $data);
+
+        $this->assertEquals([0, 0.25, 0.75, 1], $pen['compound']);
+
+        // A single line on the whole width is a simple line
+        $data = pack('V4', self::VERSION, 0, 0x0400, 0) . pack('g', 4.0)
+            . pack('V', 2) . pack('g2', 0, 1)
+            . $this->getSolidBrush(0xFF000000);
+        $this->assertArrayNotHasKey('compound', $this->read(ObjectReader::OBJECT_PEN, $data));
     }
 
     public function testPenWithArrowCap(): void

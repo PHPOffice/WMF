@@ -15,7 +15,7 @@ use PhpOffice\WMF\Renderer\GD as Renderer;
 use PhpOffice\WMF\Renderer\Rasterizer;
 
 /**
- * Reader of placeable WMF files based on GD
+ * Reader of WMF files (placeable or not) based on GD
  *
  * The records are drawn by the renderer PhpOffice\WMF\Renderer\GD.
  *
@@ -109,7 +109,6 @@ class GD extends ReaderAbstract
         self::META_SETRELABS,
         self::META_SETSTRETCHBLTMODE,
         self::META_SETTEXTCHAREXTRA,
-        self::META_INVERTREGION,
         self::META_RESIZEPALETTE,
         self::META_SETLAYOUT,
         self::META_SETTEXTJUSTIFICATION,
@@ -149,11 +148,11 @@ class GD extends ReaderAbstract
     }
 
     /**
-     * Only placeable WMF files are supported (the header defines the size of the image)
+     * Placeable WMF files (the header defines the size of the image) & standard WMF files (the size is defined by the window)
      */
     public function isWMF(): bool
     {
-        return Detector::isPlaceableWMF((string) $this->content);
+        return Detector::isWMF((string) $this->content);
     }
 
     /**
@@ -238,13 +237,19 @@ class GD extends ReaderAbstract
     }
 
     /**
-     * Creates the renderer from the placeable header : its bounding box is drawn in the image
+     * Creates the renderer from the placeable header (or from the window for standard WMF files) : its bounding box is drawn in the image
      *
      * @return int Position of the first record
      */
     protected function readHeader(): int
     {
-        $header = unpack('Vkey/vhandle/sleft/stop/sright/sbottom/vinch', (string) substr($this->content, 0, 16));
+        if (Detector::isPlaceableWMF((string) $this->content)) {
+            $header = unpack('Vkey/vhandle/sleft/stop/sright/sbottom/vinch', (string) substr($this->content, 0, 16));
+            $offset = 22;
+        } else {
+            $header = $this->getWindowBounds();
+            $offset = 0;
+        }
         // Number of logical units per inch (1440 : twips)
         $unitsPerInch = $header['inch'] ?: 1440;
         $boundsWidth = $header['right'] - $header['left'];
@@ -255,7 +260,7 @@ class GD extends ReaderAbstract
         // The device units are the pixels of the image : the window (by default, the bounding box) is mapped to the image
         $this->destroyImage($this->gd);
         $this->gd = false;
-        $this->renderer = new Renderer($width, $height, 0, 0, 0, 0, $this->fontResolver);
+        $this->renderer = new Renderer($width, $height, 0, 0, 0, 0, $this->fontResolver, $this->backgroundColor);
         $this->renderer
             ->setMapMode(Renderer::MM_ANISOTROPIC)
             ->setWindowOrg($header['left'], $header['top'])
@@ -264,9 +269,56 @@ class GD extends ReaderAbstract
             ->setViewportExt($width, $height);
 
         // META_HEADER follows the placeable header : its size is in 16-bit words
-        list(, $headerSize) = unpack('v', (string) substr($this->content, 22 + 2, 2));
+        list(, $headerSize) = unpack('v', (string) substr($this->content, $offset + 2, 2));
 
-        return 22 + 2 * $headerSize;
+        return $offset + 2 * $headerSize;
+    }
+
+    /**
+     * Returns the bounding box of a standard WMF file : the first window defined by the records
+     *
+     * The number of logical units per inch depends on the map mode (1440 for MM_ISOTROPIC & MM_ANISOTROPIC)
+     *
+     * @return array{left: int, top: int, right: int, bottom: int, inch: int}
+     */
+    protected function getWindowBounds(): array
+    {
+        // Logical units per inch of the map modes : MM_TEXT (pixels at 96 DPI), MM_LOMETRIC, MM_HIMETRIC, MM_LOENGLISH, MM_HIENGLISH, MM_TWIPS
+        $unitsPerInch = [1 => 96, 2 => 254, 3 => 2540, 4 => 100, 5 => 1000, 6 => 1440];
+        $mapMode = null;
+        $origin = [0, 0];
+        $extent = null;
+        $contentLen = strlen((string) $this->content);
+        list(, $headerSize) = unpack('v', (string) substr((string) $this->content, 2, 2));
+        $pos = 2 * $headerSize;
+        while ($pos + 6 <= $contentLen && $extent === null) {
+            $header = unpack('Vsize/vfunction', (string) substr((string) $this->content, $pos, 6));
+            if ($header['size'] < 3 || $header['function'] == self::META_EOF) {
+                break;
+            }
+            $params = (string) substr((string) $this->content, $pos + 6, 4);
+            if ($header['function'] == self::META_SETMAPMODE && $mapMode === null) {
+                $mapMode = $this->readUShort($params, 0);
+            } elseif ($header['function'] == self::META_SETWINDOWORG && strlen($params) == 4) {
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $origin = [$x, $y];
+            } elseif ($header['function'] == self::META_SETWINDOWEXT && strlen($params) == 4) {
+                list($y, $x) = $this->readShorts($params, 0, 2);
+                $extent = [$x, $y];
+            }
+            $pos += 2 * $header['size'];
+        }
+        if (!$extent || !$extent[0] || !$extent[1]) {
+            throw new WMFException('Reader : Invalid file : the size of the image is not defined');
+        }
+
+        return [
+            'left' => $origin[0],
+            'top' => $origin[1],
+            'right' => $origin[0] + $extent[0],
+            'bottom' => $origin[1] + $extent[1],
+            'inch' => $unitsPerInch[$mapMode] ?? 1440,
+        ];
     }
 
     /**
@@ -326,14 +378,17 @@ class GD extends ReaderAbstract
                     'width' => $pen['width'],
                     'geometric' => true,
                     'color' => [$pen['r'], $pen['g'], $pen['b']],
+                    // Dashes are drawn only for pens of one pixel
+                    'dashes' => $pen['width'] <= 1 ? Renderer::getPenDashes($pen['style'], true, $pen['width']) : null,
                 ]);
                 break;
             case self::META_CREATEBRUSHINDIRECT:
-                $brush = unpack('vstyle/Cr/Cg/Cb', (string) substr($params, 0, 5));
+                $brush = unpack('vstyle/Cr/Cg/Cb/x/vhatch', (string) substr($params, 0, 8));
                 $this->addObject([
                     'type' => 'brush',
                     'style' => $brush['style'],
                     'color' => [$brush['r'], $brush['g'], $brush['b']],
+                    'hatch' => $brush['hatch'],
                 ]);
                 break;
             case self::META_CREATEFONTINDIRECT:
@@ -353,7 +408,7 @@ class GD extends ReaderAbstract
                 break;
             case self::META_DIBCREATEPATTERNBRUSH:
             case self::META_CREATEPATTERNBRUSH:
-                // Pattern brushes are approximated by the average color of the pattern
+                // The pattern is tiled (its average color is used when a color is needed)
                 if ($function == self::META_CREATEPATTERNBRUSH) {
                     // Bitmap16 header, 18 reserved bytes, bits
                     $bitmap = $this->requireBitmap(Bitmap::readBitmap16((string) substr($params, 0, 10) . (string) substr($params, 28)), $function);
@@ -369,8 +424,9 @@ class GD extends ReaderAbstract
                 }
                 $this->addObject([
                     'type' => 'brush',
-                    'style' => 0,
+                    'style' => 3,
                     'color' => Bitmap::getAverageColor($bitmap),
+                    'pattern' => $bitmap,
                 ]);
                 break;
             case self::META_CREATEREGION:
@@ -416,6 +472,12 @@ class GD extends ReaderAbstract
             case self::META_PAINTREGION:
                 $renderer->fillRectangles($this->getRegion($this->readUShort($params, 0)) ?? []);
                 break;
+            case self::META_INVERTREGION:
+                // DSTINVERT on each rectangle of the region
+                foreach ($this->getRegion($this->readUShort($params, 0)) ?? [] as $rectangle) {
+                    $renderer->patBlt(...array_merge($rectangle, [Renderer::ROP_DSTINVERT]));
+                }
+                break;
             case self::META_FILLREGION:
             case self::META_FRAMEREGION:
                 $region = $this->getRegion($this->readUShort($params, 0)) ?? [];
@@ -435,7 +497,7 @@ class GD extends ReaderAbstract
                     }
                     $region = $frames;
                 }
-                $renderer->fillRectangles($region, $brush['color']);
+                $renderer->fillRectangles($region, $brush);
                 break;
 
                 // Shapes
@@ -547,7 +609,7 @@ class GD extends ReaderAbstract
                     break;
                 }
                 $bitmap = $this->requireBitmap(Bitmap::readPackedDIB((string) substr($params, 22), $colorUsage == Bitmap::DIB_PAL_COLORS), $function);
-                $renderer->drawBitmap($bitmap, $xDest, $yDest, $destWidth, $destHeight, $xSrc, $ySrc, $srcWidth, $srcHeight);
+                $renderer->drawBitmap($bitmap, $xDest, $yDest, $destWidth, $destHeight, $xSrc, $ySrc, $srcWidth, $srcHeight, $rop);
                 break;
             case self::META_SETDIBTODEV:
                 $colorUsage = $this->readUShort($params, 0);
@@ -607,7 +669,7 @@ class GD extends ReaderAbstract
                 : Bitmap::readPackedDIB($data),
             $function
         );
-        $this->renderer->drawBitmap($bitmap, $xDest, $yDest, $destWidth, $destHeight, $xSrc, $ySrc, $srcWidth, $srcHeight);
+        $this->renderer->drawBitmap($bitmap, $xDest, $yDest, $destWidth, $destHeight, $xSrc, $ySrc, $srcWidth, $srcHeight, $rop);
     }
 
     /**

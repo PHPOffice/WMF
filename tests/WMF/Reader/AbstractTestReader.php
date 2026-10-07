@@ -181,7 +181,7 @@ class AbstractTestReader extends TestCase
     /**
      * Returns an EMF file (header of inkscape_shapes.emf) with a EMR_STRETCHDIBITS record covering the image
      *
-     * @param int $compression BI_RGB (0) or a compression not supported (BI_RLE8 : 1)
+     * @param int $compression BI_RGB (0) or a compression not supported by monochrome bitmaps (BI_RLE8 : 1)
      * @param int $usage DIB_RGB_COLORS (0) or DIB_PAL_COLORS (1)
      */
     public function getContentEMFWithBitmap(int $compression, int $usage): string
@@ -208,7 +208,7 @@ class AbstractTestReader extends TestCase
     /**
      * Returns a WMF file (headers of burger.wmf) with a META_STRETCHDIB record covering the image
      *
-     * @param int $compression BI_RGB (0) or a compression not supported (BI_RLE8 : 1)
+     * @param int $compression BI_RGB (0) or a compression not supported by monochrome bitmaps (BI_RLE8 : 1)
      * @param int $usage DIB_RGB_COLORS (0) or DIB_PAL_COLORS (1)
      */
     public function getContentWMFWithBitmap(int $compression, int $usage): string

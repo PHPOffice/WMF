@@ -30,4 +30,12 @@ class EncodingTest extends TestCase
         // Lone surrogate
         $this->assertEquals("\u{FFFD}", Encoding::decodeUTF16("\x3D\xD8"));
     }
+
+    public function testDecodeSymbol(): void
+    {
+        // ASCII & private characters (U+F0xx) of the Symbol font
+        $this->assertEquals('αβχ ≤ Σ', Encoding::decodeSymbol("ab\u{F063} \u{F0A3} S"));
+        // Characters which are not in the Symbol font are kept
+        $this->assertEquals('1+2=3 €', Encoding::decodeSymbol('1+2=3 €'));
+    }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\PhpOffice\WMF\Renderer;
 
 use GdImage;
+use PhpOffice\WMF\Renderer\FontResolver;
 use PhpOffice\WMF\Renderer\GD;
 use PhpOffice\WMF\Renderer\Rasterizer;
 use PHPUnit\Framework\TestCase;
@@ -205,5 +206,174 @@ class GDTest extends TestCase
         $this->assertEquals('pen', GD::getStockObject(7)['type']);
         $this->assertEquals('font', GD::getStockObject(13)['type']);
         $this->assertNull(GD::getStockObject(9));
+    }
+
+    public function testHatchedBrush(): void
+    {
+        // HS_HORIZONTAL : red lines every 8 pixels on the background color (OPAQUE background mode)
+        $renderer = new GD(20, 20);
+        $renderer->selectObject(GD::getStockObject(8))
+            ->selectObject(['type' => 'brush', 'style' => 2, 'color' => [255, 0, 0], 'hatch' => 0])
+            ->setBkColor([0, 0, 255])
+            ->rectangle(0, 0, 20, 20);
+        $image = $renderer->render();
+
+        $this->assertColorAt($image, 5, 8, 0xFF0000);
+        $this->assertColorAt($image, 5, 10, 0x0000FF);
+
+        // TRANSPARENT background mode
+        $renderer = new GD(20, 20);
+        $renderer->selectObject(GD::getStockObject(8))
+            ->selectObject(['type' => 'brush', 'style' => 2, 'color' => [255, 0, 0], 'hatch' => 1])
+            ->setBkMode(1)
+            ->rectangle(0, 0, 20, 20);
+        $image = $renderer->render();
+
+        $this->assertColorAt($image, 8, 5, 0xFF0000);
+        $this->assertColorAt($image, 10, 5, 0xFFFFFF);
+    }
+
+    public function testDashedPen(): void
+    {
+        // Dashes of 4 pixels, spaces of 4 pixels
+        $renderer = new GD(20, 20);
+        $renderer->selectObject(['type' => 'pen', 'style' => 0, 'width' => 0, 'geometric' => false, 'color' => [0, 0, 0], 'dashes' => [4, 4]])
+            // In the middle of a row of pixels
+            ->moveTo(0, 10.5)
+            ->lineTo(20, 10.5);
+        $image = $renderer->render();
+
+        $this->assertColorAt($image, 1, 10, 0x000000);
+        $this->assertColorAt($image, 6, 10, 0xFFFFFF);
+        $this->assertColorAt($image, 9, 10, 0x000000);
+    }
+
+    public function testPatternBrush(): void
+    {
+        // Pattern of 2x1 pixels (red & blue) : tiled from the origin of the image
+        $renderer = new GD(20, 20);
+        $renderer->selectObject(GD::getStockObject(8))
+            ->selectObject(['type' => 'brush', 'style' => 3, 'color' => [128, 0, 128], 'pattern' => ['width' => 2, 'height' => 1, 'pixels' => [[0xFF0000, 0x0000FF]]]])
+            ->rectangle(5, 5, 15, 15);
+        $image = $renderer->render();
+
+        $this->assertColorAt($image, 6, 10, 0xFF0000);
+        $this->assertColorAt($image, 7, 10, 0x0000FF);
+        $this->assertColorAt($image, 12, 7, 0xFF0000);
+        $this->assertColorAt($image, 2, 2, 0xFFFFFF);
+    }
+
+    public function testCompoundPen(): void
+    {
+        // Two lines : the first quarter & the last quarter of the width
+        $renderer = new GD(40, 40);
+        $renderer->selectObject(['type' => 'pen', 'style' => 0, 'width' => 12, 'geometric' => true, 'color' => [0, 0, 0], 'compound' => [0, 0.25, 0.75, 1]])
+            ->moveTo(0, 20)
+            ->lineTo(40, 20);
+        $image = $renderer->render();
+
+        $this->assertColorAt($image, 20, 15, 0x000000);
+        $this->assertColorAt($image, 20, 20, 0xFFFFFF);
+        $this->assertColorAt($image, 20, 24, 0x000000);
+        $this->assertColorAt($image, 20, 10, 0xFFFFFF);
+    }
+
+    public function testTextOutVerticalAdvances(): void
+    {
+        $font = ['type' => 'font', 'height' => -10, 'escapement' => 0, 'weight' => 400, 'italic' => false, 'underline' => false, 'strikeOut' => false, 'charset' => 0, 'pitchAndFamily' => 0x22, 'face' => 'Arial'];
+        if ((new FontResolver())->resolve($font) === null) {
+            $this->markTestSkipped('No font available');
+        }
+        // Returns the rows containing dark pixels
+        $getRows = function (array $dy) use ($font): array {
+            $renderer = new GD(60, 60);
+            $renderer->selectObject($font)
+                ->setBkMode(1)
+                ->textOut(10, 30, 'II', [20, 20], 0, [0, 0, 0, 0], $dy);
+            $image = $renderer->render();
+            $rows = [];
+            for ($y = 0; $y < 60; ++$y) {
+                for ($x = 0; $x < 60; ++$x) {
+                    if ((imagecolorat($image, $x, $y) & 0xFF) < 0x80) {
+                        $rows[] = $y;
+                        break;
+                    }
+                }
+            }
+
+            return $rows;
+        };
+
+        $rows = $getRows([]);
+        // ETO_PDY : the second glyph is 20 units higher
+        $shiftedRows = $getRows([20, 0]);
+        $this->assertNotEmpty($rows);
+        $this->assertEquals(min($rows) - 20, min($shiftedRows));
+        $this->assertEquals(max($rows), max($shiftedRows));
+    }
+
+    public function testRasterOperations(): void
+    {
+        // SRCAND : the bitmap (red & white) is combined with the green background
+        $renderer = new GD(20, 20);
+        $renderer->selectObject(GD::getStockObject(8))
+            ->selectObject(['type' => 'brush', 'style' => 0, 'color' => [0, 255, 0]])
+            ->rectangle(0, 0, 20, 20)
+            ->drawBitmap(['width' => 2, 'height' => 1, 'pixels' => [[0xFF0000, 0xFFFFFF]]], 0, 0, 20, 20, 0, 0, 2, 1, 0x008800C6)
+            // DSTINVERT on the bottom
+            ->patBlt(0, 15, 20, 20, 0x00550009);
+        $image = $renderer->render();
+
+        $this->assertColorAt($image, 5, 5, 0x000000);
+        $this->assertColorAt($image, 15, 5, 0x00FF00);
+        $this->assertColorAt($image, 15, 18, 0xFF00FF);
+    }
+
+    public function testTransparentBackground(): void
+    {
+        $renderer = new GD(20, 20, 0, 0, 0, 0, null, null);
+        $renderer->selectObject(GD::getStockObject(8))
+            ->selectObject($this->getBrush([255, 0, 0]))
+            ->rectangle(5, 5, 15, 15);
+        $image = $renderer->render();
+
+        $this->assertEquals(127, (imagecolorat($image, 1, 1) >> 24) & 0x7F);
+        $this->assertEquals(0xFF0000, imagecolorat($image, 10, 10));
+
+        // Raster operations use a white background
+        $renderer = new GD(20, 20, 0, 0, 0, 0, null, null);
+        $renderer->drawBitmap(['width' => 1, 'height' => 1, 'pixels' => [[0xFF0000]]], 0, 0, 20, 20, 0, 0, 1, 1, 0x008800C6);
+        $this->assertEquals(0xFF0000, imagecolorat($renderer->render(), 10, 10));
+    }
+
+    public function testApplyRop(): void
+    {
+        $this->assertEquals(0x00FF00 & 0x0F0F0F, GD::applyRop(0x008800C6, 0, 0x0F0F0F, 0x00FF00));
+        $this->assertEquals(0xFF00FF, GD::applyRop(0x00550009, 0, 0, 0x00FF00));
+        // PSDPxax (generic evaluation) : D ^ (S & (P ^ D))
+        $this->assertEquals(0x00FF00 ^ (0x0F0F0F & (0xFF0000 ^ 0x00FF00)), GD::applyRop(0x00E20746, 0xFF0000, 0x0F0F0F, 0x00FF00));
+
+        $this->assertFalse(GD::isRopDependent(GD::ROP_PATCOPY, 1));
+        $this->assertTrue(GD::isRopDependent(0x00550009, 1));
+        $this->assertTrue(GD::isRopDependent(GD::ROP_SRCCOPY, 2));
+    }
+
+    public function testPenDashes(): void
+    {
+        $this->assertEquals([18, 6], GD::getPenDashes(1, true, 1));
+        $this->assertEquals([3, 1], GD::getPenDashes(1, false, 4));
+        $this->assertEquals([1, 1], GD::getPenDashes(8, true, 1));
+        // PS_USERSTYLE : in pen widths for geometric pens
+        $this->assertEquals([4, 2], GD::getPenDashes(7, false, 8, [32, 16]));
+        $this->assertNull(GD::getPenDashes(0, true, 1));
+        $this->assertNull(GD::getPenDashes(7, false, 8, [32]));
+    }
+
+    public function testHatchPatterns(): void
+    {
+        $this->assertTrue(GD::isHatchForeground(0, 3, 16));
+        $this->assertFalse(GD::isHatchForeground(0, 3, 17));
+        $this->assertTrue(GD::isHatchForeground(5, 3, 5));
+        $this->assertTrue(GD::isHatchForeground(5, 3, 3));
     }
 }

@@ -60,10 +60,41 @@ class BitmapTest extends TestCase
         $this->assertEquals([[0x000000, 0xFFFFFF]], $bitmap['pixels']);
     }
 
+    public function testReadDIBRLE8(): void
+    {
+        // 4x2 bitmap, colors : red (0), green (1), blue (2)
+        $palette = "\x00\x00\xFF\x00\x00\xFF\x00\x00\xFF\x00\x00\x00";
+        // Bottom row : 2 red pixels, then absolute mode (green, blue, padding) ; end of line
+        // Top row : delta (2, 0), then 1 green pixel ; end of bitmap
+        $bits = "\x02\x00\x00\x03\x01\x02\x00\x00\x00\x00\x00\x02\x02\x00\x01\x01\x00\x01";
+        $dib = pack('VllvvVVllVV', 40, 5, 2, 1, 8, 1, strlen($bits), 0, 0, 3, 0) . $palette . $bits;
+        $bitmap = Bitmap::readDIB($dib, 0, 52);
+
+        $this->assertNotNull($bitmap);
+        $this->assertEquals([
+            // Skipped pixels are transparent
+            [Bitmap::TRANSPARENT, Bitmap::TRANSPARENT, 0x00FF00, Bitmap::TRANSPARENT, Bitmap::TRANSPARENT],
+            [0xFF0000, 0xFF0000, 0x00FF00, 0x0000FF, 0xFF0000],
+        ], $bitmap['pixels']);
+    }
+
+    public function testReadDIBRLE4(): void
+    {
+        // 6x1 bitmap, colors : red (0), green (1)
+        $palette = "\x00\x00\xFF\x00\x00\xFF\x00\x00";
+        // 3 pixels alternating red & green, then absolute mode (green, red, green) ; end of bitmap
+        $bits = "\x03\x01\x00\x03\x10\x10\x00\x01";
+        $dib = pack('VllvvVVllVV', 40, 6, 1, 1, 4, 2, strlen($bits), 0, 0, 2, 0) . $palette . $bits;
+        $bitmap = Bitmap::readDIB($dib, 0, 48);
+
+        $this->assertNotNull($bitmap);
+        $this->assertEquals([[0xFF0000, 0x00FF00, 0xFF0000, 0x00FF00, 0xFF0000, 0x00FF00]], $bitmap['pixels']);
+    }
+
     public function testReadDIBNotSupported(): void
     {
-        // Compressed bitmap (BI_RLE8)
-        $dib = pack('VllvvVVllVV', 40, 1, 1, 1, 8, 1, 0, 0, 0, 0, 0);
+        // BI_RLE8 is only valid for 8 bits per pixel
+        $dib = pack('VllvvVVllVV', 40, 1, 1, 1, 4, 1, 0, 0, 0, 0, 0);
         $this->assertNull(Bitmap::readDIB($dib, 0, 40));
         // Empty bitmap
         $this->assertNull(Bitmap::readPackedDIB($this->getPackedDIB(0, 1, 24, '', '')));

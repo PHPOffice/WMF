@@ -20,6 +20,56 @@ trait GDTrait
     protected $gd;
 
     /**
+     * Color of the background of the image [r, g, b] (null : transparent background)
+     *
+     * @var array<int>|null
+     */
+    protected $backgroundColor = [255, 255, 255];
+
+    /**
+     * Defines the color of the background [r, g, b] (white by default), or a transparent background (null)
+     *
+     * The background must be defined before loading the file.
+     * Formats without alpha channel (JPEG, WBMP & GIF) are saved with a white background.
+     *
+     * @param array<int>|null $color
+     */
+    public function setBackgroundColor(?array $color): self
+    {
+        $this->backgroundColor = $color === null ? null : array_values($color);
+
+        return $this;
+    }
+
+    /**
+     * @return array<int>|null
+     */
+    public function getBackgroundColor(): ?array
+    {
+        return $this->backgroundColor;
+    }
+
+    /**
+     * Returns the image, on a white background if the background is transparent
+     *
+     * @phpstan-ignore-next-line
+     *
+     * @return GdImage|resource
+     */
+    protected function getOpaqueResource()
+    {
+        $image = $this->getResource();
+        if ($this->backgroundColor !== null) {
+            return $image;
+        }
+        $opaque = imagecreatetruecolor(imagesx($image), imagesy($image));
+        imagefilledrectangle($opaque, 0, 0, imagesx($image), imagesy($image), 0xFFFFFF);
+        imagecopy($opaque, $image, 0, 0, 0, 0, imagesx($image), imagesy($image));
+
+        return $opaque;
+    }
+
+    /**
      * Returns if the GD extension is loaded
      */
     public function isSupported(): bool
@@ -70,16 +120,16 @@ trait GDTrait
     {
         switch (strtolower($format)) {
             case 'gif':
-                return imagegif($this->getResource(), $filename);
+                return imagegif($this->getOpaqueResource(), $filename);
             case 'jpg':
             case 'jpeg':
-                return imagejpeg($this->getResource(), $filename);
+                return imagejpeg($this->getOpaqueResource(), $filename);
             case 'png':
                 return imagepng($this->getResource(), $filename);
             case 'webp':
                 return imagewebp($this->getResource(), $filename);
             case 'wbmp':
-                return imagewbmp($this->getResource(), $filename);
+                return imagewbmp($this->getOpaqueResource(), $filename);
             case $this->getFormat():
                 return (bool) (file_put_contents($filename, $this->content) > 0);
             default:
