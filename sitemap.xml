@@ -2,46 +2,50 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://phpoffice.github.io/WMF/index.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/credits.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/install.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/changes/0.1.0.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/changes/0.1.1.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/changes/0.1.2.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/changes/0.1.3.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/changes/0.2.0.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
+    </url>
+    <url>
+         <loc>https://phpoffice.github.io/WMF/changes/0.2.1.html</loc>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/usage/detector.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/usage/emf.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://phpoffice.github.io/WMF/usage/wmf.html</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
 </urlset>
