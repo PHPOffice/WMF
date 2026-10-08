@@ -16,3 +16,8 @@ The EMF files of the directory `tests/resources/libemf2svg` come from the [libem
 - License : [GNU General Public License v2.0](https://github.com/kakwa/libemf2svg/blob/master/LICENSE)
 
 These files are only used by the test suite : they are not distributed in the Composer package.
+
+The EMF file `tests/resources/phpspreadsheet/issue274.emf` comes from the file `imgBook1.xlsx` attached to the issue [PHPOffice/PhpSpreadsheet#274](https://github.com/PHPOffice/PhpSpreadsheet/issues/274) (`xl/media/image1.emf`).
+Its reference image `issue274.png` is rendered by `PhpOffice\WMF\Reader\EMF\GD`.
+
+This file is only used by the test suite : it is not distributed in the Composer package.

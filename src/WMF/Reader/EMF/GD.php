@@ -92,6 +92,7 @@ class GD extends ReaderAbstract
     public const EMR_EXTSELECTCLIPRGN = 0x4B;
     public const EMR_BITBLT = 0x4C;
     public const EMR_STRETCHBLT = 0x4D;
+    public const EMR_SETDIBITSTODEVICE = 0x50;
     public const EMR_STRETCHDIBITS = 0x51;
     public const EMR_EXTCREATEFONTINDIRECTW = 0x52;
     public const EMR_EXTTEXTOUTA = 0x53;
@@ -645,6 +646,9 @@ class GD extends ReaderAbstract
                 );
                 $renderer->drawBitmap($bitmap, $data['xDest'], $data['yDest'], $data['cxDest'], $data['cyDest'], $data['xSrc'], $data['ySrc'], $data['cxSrc'], $data['cySrc'], $data['rop']);
                 break;
+            case self::EMR_SETDIBITSTODEVICE:
+                $this->readSetDIBitsToDevice($record);
+                break;
             case self::EMR_GRADIENTFILL:
                 $this->readGradientFill($record);
                 break;
@@ -675,6 +679,51 @@ class GD extends ReaderAbstract
         }
 
         return true;
+    }
+
+    /**
+     * Draws a EMR_SETDIBITSTODEVICE record : a band of scan lines of a DIB, copied without stretching
+     *
+     * The bits only contain the scan lines from iStartScan to iStartScan + cScans - 1 (the scan line 0 is the bottom row
+     * of a bottom-up DIB, the top row of a top-down DIB), while the header of the DIB defines the height of the whole DIB.
+     * The source rectangle is expressed in the coordinates of the whole DIB, whose origin is its lower-left corner for
+     * a bottom-up DIB and its upper-left corner for a top-down DIB.
+     */
+    protected function readSetDIBitsToDevice(string $record): void
+    {
+        $data = unpack('l4bounds/lxDest/lyDest/lxSrc/lySrc/lcxSrc/lcySrc/VoffBmi/VcbBmi/VoffBits/VcbBits/Vusage/ViStartScan/VcScans', (string) substr($record, 8, 68));
+        if ($data['cScans'] <= 0 || $data['cxSrc'] <= 0 || $data['cySrc'] <= 0 || strlen($record) < $data['offBmi'] + 40) {
+            return;
+        }
+        list(, $height) = unpack('l', (string) substr($record, $data['offBmi'] + 8, 4));
+        $isBottomUp = $height > 0;
+        // The DIB is decoded with the height of the band
+        $band = substr_replace($record, pack('l', $isBottomUp ? $data['cScans'] : -$data['cScans']), $data['offBmi'] + 8, 4);
+        $bitmap = $this->requireBitmap(
+            Bitmap::readDIB($band, $data['offBmi'], $data['offBits'], $data['cbBmi'], $data['cbBits'], $data['usage'] == Bitmap::DIB_PAL_COLORS),
+            self::EMR_SETDIBITSTODEVICE
+        );
+        // Top row of the source rectangle in the band (whose rows are decoded from top to bottom)
+        $ySrc = $isBottomUp
+            ? $data['iStartScan'] + $data['cScans'] - $data['ySrc'] - $data['cySrc']
+            : $data['ySrc'] - $data['iStartScan'];
+        // Only the scan lines of the band are drawn
+        $top = max(0, $ySrc);
+        $bottom = min($bitmap['height'], $ySrc + $data['cySrc']);
+        if ($bottom <= $top) {
+            return;
+        }
+        $this->renderer->drawBitmap(
+            $bitmap,
+            $data['xDest'],
+            $data['yDest'] + $top - $ySrc,
+            $data['cxSrc'],
+            $bottom - $top,
+            $data['xSrc'],
+            $top,
+            $data['cxSrc'],
+            $bottom - $top
+        );
     }
 
     protected function readUInt(string $record, int $offset): int
