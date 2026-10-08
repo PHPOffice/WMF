@@ -206,6 +206,56 @@ class AbstractTestReader extends TestCase
     }
 
     /**
+     * Colors of the rows of the 8x8 DIB of getContentEMFWithDIBitsToDevice(), from top to bottom
+     */
+    public const DIBITS_COLORS = [0xFF0000, 0xFF0000, 0x00FF00, 0x00FF00, 0x0000FF, 0x0000FF, 0xFFFF00, 0xFFFF00];
+
+    /**
+     * Returns a 8x8 EMF file (1 logical unit = 1 pixel) drawing a 8x8 DIB with EMR_SETDIBITSTODEVICE records
+     *
+     * The rows of the DIB use the colors DIBITS_COLORS. Each record contains a band of $scansPerBand scan lines.
+     *
+     * @param bool $isTopDown If the DIB is top-down (else bottom-up)
+     * @param int $scansPerBand Number of scan lines of each record
+     * @param int $ySrc Y of the source rectangle (from the bottom of a bottom-up DIB, from the top of a top-down DIB)
+     * @param int $cySrc Height of the source rectangle
+     */
+    public function getContentEMFWithDIBitsToDevice(bool $isTopDown, int $scansPerBand, int $ySrc = 0, int $cySrc = 8): string
+    {
+        $size = 8;
+        $records = '';
+        $count = 0;
+        for ($startScan = 0; $startScan < $size; $startScan += $scansPerBand) {
+            $scans = min($scansPerBand, $size - $startScan);
+            $bits = '';
+            for ($scan = $startScan; $scan < $startScan + $scans; ++$scan) {
+                // The scan line 0 is the bottom row of a bottom-up DIB
+                $color = self::DIBITS_COLORS[$isTopDown ? $scan : $size - 1 - $scan];
+                $bits .= str_repeat(pack('CCC', $color & 0xFF, ($color >> 8) & 0xFF, $color >> 16), $size);
+            }
+            $bmi = pack('VllvvVVllVV', 40, $size, $isTopDown ? -$size : $size, 1, 24, 0, 0, 0, 0, 0, 0);
+            $record = pack('l4', 0, 0, $size - 1, $size - 1)
+                // xDest, yDest, xSrc, ySrc, cxSrc, cySrc
+                . pack('l6', 0, 0, 0, $ySrc, $size, $cySrc)
+                // offBmi, cbBmi, offBits, cbBits, usage, iStartScan, cScans
+                . pack('V7', 76, strlen($bmi), 76 + strlen($bmi), strlen($bits), 0, $startScan, $scans)
+                . $bmi . $bits;
+            $records .= pack('V2', 0x50, 8 + strlen($record)) . $record;
+            ++$count;
+        }
+        $records .= pack('V5', 0x0E, 20, 0, 16, 20);
+
+        // Bounds, Frame (0.01 mm at 96 DPI), signature, version, bytes, records, handles, reserved, description & palette
+        $header = pack('l4', 0, 0, $size - 1, $size - 1)
+            . pack('l4', 0, 0, (int) round($size * 2540 / 96), (int) round($size * 2540 / 96))
+            . pack('VVVVvvVVV', 0x464D4520, 0x10000, 88 + strlen($records), $count + 2, 1, 0, 0, 0, 0)
+            // Device (pixels) & Millimeters
+            . pack('l4', 1024, 768, 271, 203);
+
+        return pack('V2', 0x01, 88) . $header . $records;
+    }
+
+    /**
      * Returns a WMF file (headers of burger.wmf) with a META_STRETCHDIB record covering the image
      *
      * @param int $compression BI_RGB (0) or a compression not supported by monochrome bitmaps (BI_RLE8 : 1)

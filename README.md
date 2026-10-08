@@ -51,6 +51,7 @@ composer require phpoffice/wmf:dev-master
 ## Credits
 
 The EMF test files of the directory `tests/resources/libemf2svg` come from the [libemf2svg](https://github.com/kakwa/libemf2svg/tree/master/tests/resources) project, licensed under the [GNU General Public License v2.0](https://github.com/kakwa/libemf2svg/blob/master/LICENSE).
+The EMF test file `tests/resources/phpspreadsheet/issue274.emf` comes from the issue [PHPOffice/PhpSpreadsheet#274](https://github.com/PHPOffice/PhpSpreadsheet/issues/274).
 They are only used by the test suite and are not distributed in the Composer package.
 
 ## Contributing

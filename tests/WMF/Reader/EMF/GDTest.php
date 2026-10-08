@@ -196,6 +196,74 @@ class GDTest extends AbstractTestReader
         $this->assertFalse($reader->loadFromString($this->getContentEMFWithBitmap(1, 0)));
     }
 
+    /**
+     * EMF file of PhpSpreadsheet issue #274 : a bitmap drawn by EMR_SETDIBITSTODEVICE records of 1 scan line,
+     * over a black background (EMR_BITBLT with PATCOPY)
+     *
+     * @see https://github.com/PHPOffice/PhpSpreadsheet/issues/274
+     */
+    public function testSetDIBitsToDeviceByScanLine(): void
+    {
+        $file = $this->getResourceDir() . 'phpspreadsheet/issue274.emf';
+        $outputFile = $this->getResourceDir() . 'phpspreadsheet/output_issue274.png';
+
+        $reader = new GD();
+        $this->assertTrue($reader->load($file));
+        $image = $reader->getResource();
+        $this->assertEquals(131, imagesx($image));
+        $this->assertEquals(131, imagesy($image));
+        // The black background is covered by the bitmap
+        $this->assertNotEquals(0x000000, imagecolorat($image, 64, 64) & 0xFFFFFF);
+
+        $this->assertTrue($reader->save($outputFile, 'png'));
+        $this->assertImageCompare($outputFile, $this->getResourceDir() . 'phpspreadsheet/issue274.png', 0.02);
+        @unlink($outputFile);
+    }
+
+    /**
+     * @return array<string, array{bool, int, int, int, array<int|null>}>
+     */
+    public static function dataProviderDIBitsToDevice(): array
+    {
+        $colors = self::DIBITS_COLORS;
+        // The lower half of the DIB, drawn at the top of the image (the rest stays white)
+        $lowerHalf = [0x0000FF, 0x0000FF, 0xFFFF00, 0xFFFF00, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF];
+
+        return [
+            'bottom-up, whole DIB' => [false, 8, 0, 8, $colors],
+            'bottom-up, bands of 1 scan line' => [false, 1, 0, 8, $colors],
+            'bottom-up, bands of 3 scan lines' => [false, 3, 0, 8, $colors],
+            'top-down, whole DIB' => [true, 8, 0, 8, $colors],
+            'top-down, bands of 3 scan lines' => [true, 3, 0, 8, $colors],
+            // The origin of a bottom-up DIB is its lower-left corner
+            'bottom-up, lower half' => [false, 8, 0, 4, $lowerHalf],
+            'bottom-up, lower half, bands of 3 scan lines' => [false, 3, 0, 4, $lowerHalf],
+            // The origin of a top-down DIB is its upper-left corner
+            'top-down, lower half' => [true, 8, 4, 4, $lowerHalf],
+            'top-down, lower half, bands of 3 scan lines' => [true, 3, 4, 4, $lowerHalf],
+        ];
+    }
+
+    /**
+     * @dataProvider dataProviderDIBitsToDevice
+     *
+     * @param array<int> $expectedColors Expected colors of the rows of the image, from top to bottom
+     */
+    public function testSetDIBitsToDevice(bool $isTopDown, int $scansPerBand, int $ySrc, int $cySrc, array $expectedColors): void
+    {
+        $reader = new GD();
+        $this->assertTrue($reader->loadFromString($this->getContentEMFWithDIBitsToDevice($isTopDown, $scansPerBand, $ySrc, $cySrc)));
+        $image = $reader->getResource();
+
+        $this->assertEquals(8, imagesx($image));
+        $this->assertEquals(8, imagesy($image));
+        $colors = [];
+        for ($y = 0; $y < 8; ++$y) {
+            $colors[] = imagecolorat($image, 4, $y) & 0xFFFFFF;
+        }
+        $this->assertEquals($expectedColors, $colors);
+    }
+
     public function testEMFPlus(): void
     {
         $file = $this->getResourceDir() . 'libemf2svg/emf/test-000.emf';
