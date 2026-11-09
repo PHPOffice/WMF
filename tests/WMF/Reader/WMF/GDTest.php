@@ -190,16 +190,40 @@ class GDTest extends AbstractTestReader
 
     public function testLoadStandardWMF(): void
     {
-        // Without the placeable header, the size is defined by the window (MM_ANISOTROPIC : 1440 units per inch)
+        // Without the placeable header, the size is defined by the window (no META_SETMAPMODE record : 1440 units per inch)
         $content = (string) file_get_contents($this->getResourceDir() . 'burger.wmf');
         $reader = new GD();
-        $this->assertTrue($reader->loadFromString(substr($content, 22)));
+        $this->assertTrue($this->callWithErrorsReported(function () use ($reader, $content): bool {
+            return $reader->loadFromString(substr($content, 22));
+        }));
+        // No error is raised (on PHP 8.5, using null as an array offset is deprecated)
+        $this->assertNull(error_get_last());
         $this->assertTrue($reader->isWMF());
 
         // The window of burger.wmf : extent (2290, -2035)
         $image = $reader->getResource();
         $this->assertEquals((int) ceil(2290 / 1440 * 72), imagesx($image));
         $this->assertEquals((int) ceil(2035 / 1440 * 72), imagesy($image));
+    }
+
+    public function testLoadWithDeprecation(): void
+    {
+        // A deprecation raised while reading does not mean that the file is corrupted : it is left to PHP
+        $reader = new class extends GD {
+            protected function readHeader(): int
+            {
+                trigger_error('Deprecated while reading', E_USER_DEPRECATED);
+
+                return parent::readHeader();
+            }
+        };
+        $content = (string) file_get_contents($this->getResourceDir() . 'burger.wmf');
+        $this->assertTrue($this->callWithErrorsReported(function () use ($reader, $content): bool {
+            return $reader->loadFromString($content);
+        }));
+        $error = error_get_last();
+        $this->assertEquals(E_USER_DEPRECATED, $error['type'] ?? null);
+        $this->assertEquals('Deprecated while reading', $error['message'] ?? null);
     }
 
     public function testLoadStandardWMFWithoutWindow(): void

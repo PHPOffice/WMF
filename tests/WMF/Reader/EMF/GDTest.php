@@ -302,6 +302,35 @@ class GDTest extends AbstractTestReader
         $this->assertFalse($reader->isEMFPlusRendered());
     }
 
+    public function testLoadWithDeprecation(): void
+    {
+        // A deprecation raised while reading does not mean that the file is corrupted : it is left to PHP
+        $reader = new class extends GD {
+            protected function readRecords(bool $isEMFPlus = false): void
+            {
+                trigger_error('Deprecated while reading', E_USER_DEPRECATED);
+                parent::readRecords($isEMFPlus);
+            }
+        };
+
+        // The EMF+ records are drawn : the deprecation does not make the reader fall back to the EMF records
+        $this->assertTrue($this->callWithErrorsReported(function () use ($reader): bool {
+            return $reader->load($this->getResourceDir() . 'libemf2svg/emf/test-000.emf');
+        }));
+        $this->assertTrue($reader->isEMFPlusRendered());
+        $error = error_get_last();
+        $this->assertEquals(E_USER_DEPRECATED, $error['type'] ?? null);
+        $this->assertEquals('Deprecated while reading', $error['message'] ?? null);
+
+        $this->assertTrue($this->callWithErrorsReported(function () use ($reader): bool {
+            return $reader->load($this->getResourceDir() . 'computer_mail.emf');
+        }));
+        $this->assertFalse($reader->isEMFPlusRendered());
+        $error = error_get_last();
+        $this->assertEquals(E_USER_DEPRECATED, $error['type'] ?? null);
+        $this->assertEquals('Deprecated while reading', $error['message'] ?? null);
+    }
+
     public function testBackgroundColor(): void
     {
         $file = $this->getResourceDir() . 'computer_mail.emf';
