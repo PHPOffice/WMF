@@ -128,6 +128,11 @@ class GD extends ReaderAbstract
     public const DPI = 72;
 
     /**
+     * Logical units per inch when neither the placeable header nor the map mode defines them : by convention, 1440 (twips)
+     */
+    protected const DEFAULT_UNITS_PER_INCH = 1440;
+
+    /**
      * @var Renderer
      */
     protected $renderer;
@@ -186,6 +191,10 @@ class GD extends ReaderAbstract
         // Corrupted files must not raise PHP errors
         set_error_handler(function (int $errno, string $errstr): bool {
             if (!(error_reporting() & $errno)) {
+                return false;
+            }
+            // Deprecations do not mean that the file is corrupted : they are left to PHP
+            if ($errno === E_DEPRECATED || $errno === E_USER_DEPRECATED) {
                 return false;
             }
             throw new WMFException('Reader : Invalid file : ' . $errstr);
@@ -250,8 +259,8 @@ class GD extends ReaderAbstract
             $header = $this->getWindowBounds();
             $offset = 0;
         }
-        // Number of logical units per inch (1440 : twips)
-        $unitsPerInch = $header['inch'] ?: 1440;
+        // Number of logical units per inch
+        $unitsPerInch = $header['inch'] ?: self::DEFAULT_UNITS_PER_INCH;
         $boundsWidth = $header['right'] - $header['left'];
         $boundsHeight = $header['bottom'] - $header['top'];
         $width = (int) max(1, ceil(abs($boundsWidth) / $unitsPerInch * self::DPI));
@@ -277,7 +286,7 @@ class GD extends ReaderAbstract
     /**
      * Returns the bounding box of a standard WMF file : the first window defined by the records
      *
-     * The number of logical units per inch depends on the map mode (1440 for MM_ISOTROPIC & MM_ANISOTROPIC)
+     * The number of logical units per inch depends on the map mode (1440 for MM_ISOTROPIC & MM_ANISOTROPIC, and without META_SETMAPMODE record)
      *
      * @return array{left: int, top: int, right: int, bottom: int, inch: int}
      */
@@ -317,7 +326,7 @@ class GD extends ReaderAbstract
             'top' => $origin[1],
             'right' => $origin[0] + $extent[0],
             'bottom' => $origin[1] + $extent[1],
-            'inch' => $mapMode !== null ? ($unitsPerInch[$mapMode] ?? 1440) : 1440,
+            'inch' => $unitsPerInch[$mapMode ?? 0] ?? self::DEFAULT_UNITS_PER_INCH,
         ];
     }
 

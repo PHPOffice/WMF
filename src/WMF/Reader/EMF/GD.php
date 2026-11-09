@@ -237,6 +237,10 @@ class GD extends ReaderAbstract
             if (!(error_reporting() & $errno)) {
                 return false;
             }
+            // Deprecations do not mean that the file is corrupted : they are left to PHP
+            if ($errno === E_DEPRECATED || $errno === E_USER_DEPRECATED) {
+                return false;
+            }
             throw new WMFException('Reader : Invalid file : ' . $errstr);
         });
         $this->isEMFPlusRendered = false;

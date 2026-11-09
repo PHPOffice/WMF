@@ -24,6 +24,26 @@ class AbstractTestReader extends TestCase
     }
 
     /**
+     * Calls the callback with every error reported, but neither displayed nor logged : the last error left to PHP is read with error_get_last()
+     *
+     * @return mixed The result of the callback
+     */
+    public function callWithErrorsReported(callable $callback)
+    {
+        $errorReporting = error_reporting(E_ALL);
+        $displayErrors = ini_set('display_errors', '0');
+        $logErrors = ini_set('log_errors', '0');
+        error_clear_last();
+        try {
+            return $callback();
+        } finally {
+            error_reporting($errorReporting);
+            ini_set('display_errors', (string) $displayErrors);
+            ini_set('log_errors', (string) $logErrors);
+        }
+    }
+
+    /**
      * @return array<array<string>>
      */
     public static function dataProviderFilesWMF(): array
